@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- ONE template for every blog post: article.html?post=<slug>.
+       js/cms.js fills the <article>, related posts, title, description, canonical, og tags and JSON-LD
+       from Sanity (or the sample posts in js/content.js). Don't copy this file per post.
+       The markup below is only the fallback shown when no post is selected and Sanity isn't connected. -->
+  <title>A Bathroom Remodel, Start to Finish | Resources | North Carolina Building &amp; Remodeling</title>
+  <meta name="description" content="How a bathroom remodel comes together, from demo and rough-in to tile and the final walkthrough, from North Carolina Building and Remodeling LLC.">
+  <meta name="theme-color" content="#0d0d0e">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="North Carolina Building and Remodeling, LLC">
+  <meta property="og:title" content="A Bathroom Remodel, Start to Finish">
+  <meta property="og:description" content="How a bathroom remodel comes together, from demo to the final walkthrough.">
+  <meta property="og:image" content="img/hero/hero-bath-work.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=78">
+  <script>document.documentElement.classList.add("js");</script>
+  <!-- BlogPosting schema: replaced per post by js/cms.js (headline, description, datePublished, image, mainEntityOfPage). -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "A Bathroom Remodel, Start to Finish",
+    "author": { "@type": "Person", "name": "James" },
+    "publisher": { "@type": "Organization", "name": "North Carolina Building and Remodeling, LLC" }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap nav-bar">
+      <a class="brand" href="index.html">
+        <img class="brand-logo" src="img/brand/nclogo.png" alt="" width="640" height="215">
+        <span class="brand-text"><span class="brand-top">North Carolina</span><span class="brand-main">Building &amp; Remodeling</span></span>
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-nav"><span></span></button>
+      <nav class="site-nav" id="site-nav" aria-label="Main">
+        <ul class="nav-list">
+          <li><a href="services.html">Services</a></li>
+          <li><a href="projects.html">Projects</a></li>
+          <li><a href="jobsite.html" aria-current="page">Resources</a></li>
+          <li class="nav-drop">
+            <button class="nav-drop-toggle" type="button" aria-expanded="false" aria-controls="explore-menu">Explore <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
+            <ul class="nav-drop-menu" id="explore-menu">
+              <li><a href="about.html">About Us</a></li>
+              <li><a href="partner-with-us.html">Partner With Us</a></li>
+              <li><a href="contact.html">Contact</a></li>
+            </ul>
+          </li>
+        </ul>
+        <a class="btn btn-primary nav-cta" href="#jobber-request" data-link="jobber">Request a Quote</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ▓▓ OWNER-MANAGED: the post from Sanity (or js/content.js samples), chosen by ?post=<slug>. -->
+    <article data-cms-list="article" data-cms-label="Blog post">
+      <header class="article-head tone-light">
+        <div class="wrap">
+          <ol class="crumbs on-light"><li><a href="index.html">Home</a></li><li><a href="jobsite.html">Resources</a></li><li>Sample post</li></ol>
+          <p class="eyebrow">Stories</p>
+          <h1>A bathroom remodel, start to finish</h1>
+          <p class="article-meta">
+            <span>By <strong>James</strong></span>
+            <span>Sample post, publication date goes here</span>
+          </p>
+        </div>
+      </header>
+
+      <figure class="article-hero">
+        <img src="img/blog/article-bath-tile-progress.jpg" alt="Gray tile partly installed on a bathroom wall, with a bucket of thinset and a trowel on a drop cloth" width="1024" height="576" fetchpriority="high">
+      </figure>
+
+      <div class="prose">
+        <p class="intro">This is a sample article showing how a project story is laid out. Swap in a real job: what the homeowner needed, what we found, and how it came together.</p>
+        <p>Start with the situation. What wasn’t working in the space, and what did the homeowner want to change? Keep it short and specific. A few plain sentences do more than a page of adjectives.</p>
+
+        <h2>What we found</h2>
+        <p>Most projects have something that isn’t obvious at first. Describe it plainly, along with how it was handled and what it meant for the schedule.</p>
+        <figure>
+          <img src="img/blog/article-rough-in-plumbing.jpg" alt="Red and blue water lines and a white drain pipe running through open wall studs, with a new cabinet box nearby" width="1024" height="576" loading="lazy" decoding="async">
+          <figcaption>Captions say what the photo shows. For example: rough-in plumbing before the new cabinets went in.</figcaption>
+        </figure>
+
+        <h2>Before and after</h2>
+        <div class="before-after wide">
+          <figure>
+            <img class="lift" src="img/hero/hero-kitchen-work.jpg" alt="Kitchen during demolition, before" width="1024" height="576" loading="lazy" decoding="async">
+            <span>Before</span>
+          </figure>
+          <figure>
+            <img src="img/blog/article-kitchen-after.jpg" alt="Finished kitchen with light gray shaker cabinets, white counters and a subway tile backsplash, after" width="1024" height="576" loading="lazy" decoding="async">
+            <span>After</span>
+          </figure>
+        </div>
+
+        <blockquote class="pull-quote">
+          <p>Pull quotes highlight one line worth remembering, such as a comment from the homeowner if they’re happy to share it.</p>
+          <cite>Pull quote example</cite>
+        </blockquote>
+
+        <h2>Project gallery</h2>
+        <div class="gallery wide">
+          <img src="img/blog/article-shower-tile-closeup.jpg" alt="Thinset combed onto a shower wall next to newly set white subway tile and a level" width="1024" height="576" loading="lazy" decoding="async">
+          <img src="img/blog/article-bath-finished.jpg" alt="Finished bathroom with an oak vanity, a round mirror and a glass walk-in shower" width="1024" height="576" loading="lazy" decoding="async">
+          <img src="img/blog/article-wall-framing.jpg" alt="New wood stud walls and a window opening in a house under construction" width="1024" height="576" loading="lazy" decoding="async">
+        </div>
+
+        <h2>Watch the walkthrough</h2>
+        <!-- VIDEO: paste the YouTube video ID into data-youtube-id. -->
+        <figure class="video video-blank wide" data-video data-youtube-id="" data-title="Bathroom remodel walkthrough">
+          <button class="video-play" type="button" aria-label="Play video: bathroom remodel walkthrough">
+            <span class="video-play-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg></span>
+          </button>
+          <figcaption class="video-label">Video coming soon</figcaption>
+        </figure>
+
+        <h2>What goes in a write-up</h2>
+        <ul>
+          <li>Project type and the related service</li>
+          <li>Location, if the homeowner is comfortable sharing it</li>
+          <li>Before-and-after photos</li>
+          <li>A short gallery or a video walkthrough</li>
+          <li>A link to start a similar request</li>
+        </ul>
+      </div>
+
+      <aside class="article-cta">
+        <div class="cta-panel">
+          <div>
+            <p class="eyebrow">Start your project</p>
+            <h2>Planning something similar?</h2>
+            <p>Tell us about your project and send us photos through our project request system.</p>
+          </div>
+          <a class="btn btn-primary" href="#jobber-request" data-link="jobber">Start Your Request</a>
+        </div>
+      </aside>
+    </article>
+
+    <section class="section tone-gray" aria-labelledby="related-title">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Keep reading</p>
+            <h2 id="related-title">More from the jobsite.</h2>
+          </div>
+          <div class="section-aside"><a class="link-arrow" href="jobsite.html">All posts</a></div>
+        </div>
+        <!-- ▓▓ OWNER-MANAGED: up to 3 other posts, same label first. -->
+        <div class="post-grid" data-cms-list="relatedPosts" data-cms-label="Related posts">
+          <article class="post">
+            <a class="post-media" href="article.html?post=roof-check-before-winter" tabindex="-1" aria-hidden="true"><img src="img/blog/blog-roof-check-shingles.jpg" alt="" width="1024" height="576" loading="lazy" decoding="async"></a>
+            <p class="post-meta"><span class="post-cat">Tips</span><span class="post-date">Sample post</span></p>
+            <h3><a href="article.html?post=roof-check-before-winter">What to look for on your roof before winter</a></h3>
+            <p>A short list you can check from the ground, and when it’s time to call someone.</p>
+          </article>
+          <article class="post">
+            <a class="post-media" href="article.html?post=planning-a-kitchen-remodel" tabindex="-1" aria-hidden="true"><img src="img/blog/blog-kitchen-planning-samples.jpg" alt="" width="1024" height="576" loading="lazy" decoding="async"></a>
+            <p class="post-meta"><span class="post-cat">Tips</span><span class="post-date">Sample post</span></p>
+            <h3><a href="article.html?post=planning-a-kitchen-remodel">Planning a kitchen remodel: where to start</a></h3>
+            <p>Layout, budget and timing questions worth answering before anything gets torn out.</p>
+          </article>
+          <article class="post">
+            <a class="post-media" href="article.html?post=jobsite-video-framing-day" tabindex="-1" aria-hidden="true"><img src="img/blog/blog-framing-day-trusses.jpg" alt="" width="1024" height="576" loading="lazy" decoding="async"></a>
+            <p class="post-meta"><span class="post-cat">Stories</span><span class="post-date">Sample post</span></p>
+            <h3><a href="article.html?post=jobsite-video-framing-day">Jobsite video: framing day</a></h3>
+            <p>A quick look at framing on a residential build, from the first wall to the roof line.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="index.html"><img class="brand-logo footer-logo" src="img/brand/nclogo.png" alt="North Carolina Building and Remodeling, LLC home" width="640" height="215" loading="lazy" decoding="async"></a>
+        <p>Remodeling, roofing, home repairs, painting, and exterior cleaning for homeowners in Cumberland County, NC and surrounding communities.</p>
+        <p class="footer-award"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="M8.6 13.8 7 22l5-2.8 5 2.8-1.6-8.2"/></svg>Nextdoor Neighborhood Favorite 2025</p>
+        <p class="footer-nc"><svg class="nc-flag" viewBox="0 0 24 18" aria-hidden="true"><rect width="24" height="18" fill="#2b3f86"/><rect x="8" width="16" height="9" fill="#b3261e"/><rect x="8" y="9" width="16" height="9" fill="#fff"/><polygon points="4,6.6 4.558,8.231 6.283,8.258 4.903,9.294 5.411,10.942 4,9.95 2.589,10.942 3.097,9.294 1.717,8.258 3.442,8.231" fill="#fff"/></svg>Proudly North Carolina</p>
+      </div>
+      <nav aria-label="Services">
+        <p class="footer-head">Services</p>
+        <ul>
+          <li><a href="services.html#remodeling">Remodeling</a></li>
+          <li><a href="services.html#roofing">Roofing</a></li>
+          <li><a href="services.html#repairs">Repairs and Renovations</a></li>
+          <li><a href="services.html#painting">Painting</a></li>
+          <li><a href="services.html#exterior-cleaning">Exterior Cleaning</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Explore">
+        <p class="footer-head">Explore</p>
+        <ul>
+          <li><a href="about.html">About</a></li>
+          <li><a href="projects.html">Projects</a></li>
+          <li><a href="jobsite.html">Resources</a></li>
+          <li><a href="index.html#reviews">Reviews</a></li>
+          <li><a href="partners.html">Partners</a></li>
+          <li><a href="partner-with-us.html">Partner With Us</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="footer-cta">
+        <p class="footer-head">Start a project</p>
+        <p>Quote requests go through our Jobber request form. Tell us what you need and send a few photos.</p>
+        <a class="btn btn-primary" href="#jobber-request" data-link="jobber">Start Your Request</a>
+      </div>
+    </div>
+    <div class="wrap footer-bottom">
+      <ul class="social" aria-label="Social links">
+        <li><a href="#google" data-link="google">Google</a></li>
+        <li><a href="#facebook" data-link="facebook">Facebook</a></li>
+        <li><a href="#nextdoor" data-link="nextdoor">Nextdoor</a></li>
+        <li><a href="https://www.youtube.com/@ncbuildingandremodelingllc/shorts" data-link="youtube">YouTube</a></li>
+        <li><a href="contact.html#jobber-form" data-link="jobber">Jobber</a></li>
+      </ul>
+      <p>© <span data-year>2026</span> North Carolina Building and Remodeling, LLC · <a href="privacy.html">Privacy</a> · <a href="#owner-login" data-link="studio">Owner login</a></p>
+    </div>
+  </footer>
+
+  <a class="btn btn-primary mobile-cta" href="#jobber-request" data-link="jobber">Request a Quote</a>
+
+  <script src="js/config.js?v=12"></script>
+  <!-- Owner-managed content: js/content.js holds photos/projects (and sample posts), js/cms.js draws them and the Sanity blog posts into the page. -->
+  <script src="js/content.js?v=21"></script>
+  <script src="js/cms.js?v=10"></script>
+  <script src="js/site.js?v=39"></script>
+</body>
+</html>
