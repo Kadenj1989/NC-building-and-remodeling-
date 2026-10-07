@@ -1589,6 +1589,14 @@ article[id] {
   gap: 48px 32px;
 }
 
+.blog-rest {
+  margin-top: 48px;
+}
+
+[data-cms-list="relatedPosts"]:not(:has(.wrap)) {
+  display: none;
+}
+
 .post-media {
   display: block;
   aspect-ratio: 3 / 2;
@@ -2698,7 +2706,7 @@ article[id] {
   color: var(--steel);
 }
 
-/* Blog rich text from Sanity: styles the design didn't need before */
+/* Blog rich text */
 .prose h3 {
   margin-top: 1.8em;
   font-size: clamp(1.5rem, 2.4vw, 1.8rem);

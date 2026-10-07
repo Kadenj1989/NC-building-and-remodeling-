@@ -56,9 +56,12 @@
       </div>
     </section>
 
-    <!-- Blog coming soon. Static on purpose: no data-cms-list here, so js/cms.js never injects posts. -->
+    <!--
+      Pages CMS blog. With no posts in content/posts, this "coming soon" block stays.
+      The first published post replaces it.
+    -->
     <section class="section tone-light">
-      <div class="wrap">
+      <div class="wrap" data-cms-list="resourcesBlog" data-cms-label="Resources blog">
         <div class="soon-feature reveal">
           <figure class="soon-media">
             <img src="img/blog/resources-soon-paint-swatches.jpg" alt="Paint color sample cards, a sample pot and a paintbrush on a wood table" width="1024" height="576" loading="lazy" decoding="async">
@@ -152,10 +155,10 @@
 
   <a class="btn btn-primary mobile-cta" href="#jobber-request" data-link="jobber">Request a Quote</a>
 
-  <script src="js/config.js?v=12"></script>
-  <!-- Owner-managed content: js/content.js holds photos/projects (and sample posts), js/cms.js draws them and the Sanity blog posts into the page. -->
-  <script src="js/content.js?v=21"></script>
-  <script src="js/cms.js?v=10"></script>
-  <script src="js/site.js?v=39"></script>
+  <script src="js/config.js?v=13"></script>
+  <!-- Owner-managed content: js/content.js holds photos and projects. js/cms.js draws them, and loads blog posts from Pages CMS. -->
+  <script src="js/content.js?v=22"></script>
+  <script src="js/cms.js?v=11"></script>
+  <script src="js/site.js?v=41"></script>
 </body>
 </html>

@@ -4,10 +4,9 @@
   ==========================================================================
   Photos and projects live in this file.
 
-  Blog posts come from Sanity Studio once SANITY_PROJECT_ID is set in
-  js/config.js. Until then, the sample posts at the bottom of this file
-  fill the blog so the pages still look right. With Sanity connected,
-  these sample posts are ignored.
+  Blog posts do not live here. Pages CMS saves them as Markdown files in
+  content/posts. Until the first post is published, the site shows
+  "Our blog is coming soon."
 
   On the pages, every spot filled from this file is marked with
   data-cms-img="..." (single image) or data-cms-list="..." (a list).
@@ -116,124 +115,5 @@ window.SITE_CONTENT = {
         { image: "img/projects/door-install/after-1.jpg", alt: "New white door with a divided glass window" }
       ]
     }
-  ],
-
-  /* SAMPLE blog posts (Resources page) — shown only while SANITY_PROJECT_ID in js/config.js is empty.
-     Each post is one simple record and opens at article.html?post=<slug>.
-     The Resources page shows every post newest first; the newest one is shown large.
-     slug:     the end of the post's web address (lowercase, dashes)
-     title:    headline
-     label:    optional, "Stories" or "Tips"
-     date:     e.g. "2026-10-02" — empty shows "Sample post"
-     excerpt:  one or two sentences for the cards
-     image / imageAlt: cover photo and a short description of it
-     content:  article body in Sanity's Portable Text format (optional) */
-  posts: [
-    {
-      slug: "bathroom-remodel-start-to-finish",
-      title: "A bathroom remodel, start to finish",
-      label: "Stories",
-      date: "",
-      excerpt: "How a remodel comes together: demo, rough-in, tile and the final walkthrough.",
-      image: "img/blog/article-bath-tile-progress.jpg",
-      imageAlt: "Gray tile partly installed on a bathroom wall, with a bucket of thinset and a trowel on a drop cloth",
-      url: "article.html?post=bathroom-remodel-start-to-finish",
-      sample: true,
-      content: [
-        { _type: "block", style: "h2", children: [{ _type: "span", text: "What we found" }] },
-        {
-          _type: "block", style: "normal", markDefs: [{ _key: "l1", _type: "link", href: "services.html#remodeling" }],
-          children: [
-            { _type: "span", text: "Most projects have something that isn’t obvious at first. Here it was " },
-            { _type: "span", text: "soft subfloor", marks: ["strong"] },
-            { _type: "span", text: " under the old tub. We replaced it before any tile went down. See how our " },
-            { _type: "span", text: "remodeling work", marks: ["l1"] },
-            { _type: "span", text: " comes together, " },
-            { _type: "span", text: "step by step", marks: ["em"] },
-            { _type: "span", text: "." }
-          ]
-        },
-        {
-          _type: "image",
-          url: "img/blog/article-bath-finished.jpg",
-          alt: "Finished bathroom with an oak vanity, a round mirror and a glass walk-in shower",
-          caption: "The finished bathroom after tile, fixtures and the final walkthrough."
-        },
-        { _type: "block", style: "h3", children: [{ _type: "span", text: "The steps, in order" }] },
-        { _type: "block", style: "normal", listItem: "bullet", level: 1, children: [{ _type: "span", text: "Demo and haul-away" }] },
-        { _type: "block", style: "normal", listItem: "bullet", level: 1, children: [{ _type: "span", text: "Plumbing and electrical rough-in" }] },
-        { _type: "block", style: "normal", listItem: "bullet", level: 1, children: [{ _type: "span", text: "Waterproofing, tile and grout" }] },
-        { _type: "block", style: "normal", listItem: "bullet", level: 1, children: [{ _type: "span", text: "Fixtures, trim and the final walkthrough" }] },
-        { _type: "block", style: "blockquote", children: [{ _type: "span", text: "Pull quotes highlight one line worth remembering, such as a comment from the homeowner." }] },
-        { _type: "block", style: "normal", children: [{ _type: "span", text: "Planning something similar? Send us a few photos and we’ll take a look." }] }
-      ]
-    },
-    {
-      slug: "roof-check-before-winter",
-      title: "What to look for on your roof before winter",
-      label: "Tips",
-      date: "",
-      excerpt: "A short list you can check from the ground, and when it’s time to call someone.",
-      image: "img/blog/blog-roof-check-shingles.jpg",
-      imageAlt: "Dark asphalt shingles above a gutter holding fallen autumn leaves",
-      url: "article.html?post=roof-check-before-winter",
-      sample: true
-    },
-    {
-      slug: "jobsite-video-framing-day",
-      title: "Jobsite video: framing day",
-      label: "Stories",
-      date: "",
-      excerpt: "A quick look at framing on a residential build, from the first wall to the roof line.",
-      image: "img/blog/blog-framing-day-trusses.jpg",
-      imageAlt: "Roof trusses set on top of a sheathed two-story house frame against a blue sky",
-      url: "article.html?post=jobsite-video-framing-day",
-      sample: true
-    },
-    {
-      slug: "deck-boards-repair-or-replace",
-      title: "Deck boards: repair or replace?",
-      label: "Tips",
-      date: "",
-      excerpt: "How to tell whether a few boards need swapping or the framing underneath needs work.",
-      image: "img/blog/blog-deck-boards.jpg",
-      imageAlt: "Weathered gray deck boards with a few new replacement boards, a drill and a box of screws",
-      url: "article.html?post=deck-boards-repair-or-replace",
-      sample: true
-    },
-    {
-      slug: "planning-a-kitchen-remodel",
-      title: "Planning a kitchen remodel: where to start",
-      label: "Tips",
-      date: "",
-      excerpt: "Layout, budget and timing questions worth answering before anything gets torn out.",
-      image: "img/blog/blog-kitchen-planning-samples.jpg",
-      imageAlt: "Cabinet door, countertop and tile samples lined up on a kitchen island",
-      url: "article.html?post=planning-a-kitchen-remodel",
-      sample: true
-    },
-    {
-      slug: "why-paint-prep-matters",
-      title: "Why paint prep matters more than the paint",
-      label: "Tips",
-      date: "",
-      excerpt: "Patching, sanding and priming: the steps that decide how long a paint job lasts.",
-      image: "img/blog/blog-paint-prep.jpg",
-      imageAlt: "Patched drywall with painter's tape, a sanding block, a putty knife and a roller tray on a drop cloth",
-      url: "article.html?post=why-paint-prep-matters",
-      sample: true
-    },
-    {
-      slug: "welcome-to-from-the-jobsite",
-      title: "Welcome to From the Jobsite",
-      label: "Stories",
-      date: "",
-      excerpt: "What this page is for, and what you can expect to find here as it grows.",
-      image: "img/blog/blog-welcome-porch.jpg",
-      imageAlt: "Front porch with two rocking chairs, a potted fern and an open blue front door",
-      url: "article.html?post=welcome-to-from-the-jobsite",
-      sample: true
-    }
   ]
 };
-

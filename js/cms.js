@@ -1,99 +1,49 @@
 /*
   Renders owner-managed content into the page.
     - Photos, hero slides and projects: js/content.js
-    - Blog posts: Sanity (published posts only) when SITE_CONFIG.SANITY_PROJECT_ID is set,
-      otherwise the sample posts in js/content.js
+    - Blog posts: Pages CMS Markdown files in content/posts
+
+  Pages CMS (.pages.yml) saves each post as content/posts/<slug>.md with
+  title, slug, date, featured_image, video, attachment, and body.
+  Images and files use the public path /content/uploads/.
+  This file reads those Markdown files from the public GitHub repository.
+  Blog posts open at article.html?post=<slug>.
 
   Markup hooks:
     data-cms-img="hero | services.remodeling | owner | closingImage | ..."
     data-cms-list="heroSlides | featuredProjects | allProjects | projectDetail | moreProjects |
-                   homeFeatured | homeRecent | latestPosts | featuredPost | archivePosts | article | relatedPosts"
+                   homeBlog | resourcesBlog | article | relatedPosts"
     data-cms-label="Readable name"   -> shown when the page is opened with ?cms
 
-  The HTML inside each hook is a static fallback and is replaced on load.
-  With Sanity connected, posts arrive after a second, posts-only render; hero slides and
-  project lists are drawn once and never redrawn.
-
-  Blog posts open at article.html?post=<slug> (a /blog/<slug> path also works if the host rewrites it).
+  Blog lists return null when there are no posts, so the static
+  "Our blog is coming soon." HTML stays in place.
 */
 (function () {
   var doc = document;
   var config = window.SITE_CONFIG || {};
-  var SANITY_ID = String(config.SANITY_PROJECT_ID || "").trim();
-  var SANITY_DATASET = String(config.SANITY_DATASET || "production").trim();
+  var GITHUB_OWNER = String(config.GITHUB_OWNER || "Kadenj1989").trim();
+  var GITHUB_REPO = String(config.GITHUB_REPO || "NC-building-and-remodeling-").trim();
+  var GITHUB_BRANCH = String(config.GITHUB_BRANCH || "main").trim();
+  var POSTS_PATH = "content/posts";
   var SITE_NAME = "North Carolina Building & Remodeling";
   var ORG_NAME = "North Carolina Building and Remodeling, LLC";
-
-  /* A post has at most one label: Stories or Tips. Older category values still map onto them. */
-  var LABELS = {
-    stories: "Stories",
-    projects: "Stories",
-    "customer-stories": "Stories",
-    videos: "Stories",
-    "company-news": "Stories",
-    tips: "Tips",
-    remodeling: "Tips",
-    roofing: "Tips",
-    "home-maintenance": "Tips",
-    seasonal: "Tips"
+  var POST_LISTS = {
+    homeBlog: 1,
+    resourcesBlog: 1,
+    homeFeatured: 1,
+    homeRecent: 1,
+    latestPosts: 1,
+    featuredPost: 1,
+    archivePosts: 1,
+    article: 1,
+    relatedPosts: 1
   };
-  var POST_LISTS = { homeFeatured: 1, homeRecent: 1, latestPosts: 1, featuredPost: 1, archivePosts: 1, article: 1, relatedPosts: 1 };
 
   function merge(base, extra) {
     var out = {}, k;
     for (k in base) out[k] = base[k];
     for (k in extra) out[k] = extra[k];
     return out;
-  }
-
-  function loadContent() {
-    var base = window.SITE_CONTENT || {};
-    if (SANITY_ID) return Promise.resolve(merge(base, { posts: [], sanity: true, blogState: "loading" }));
-    return Promise.resolve(merge(base, { posts: (base.posts || []).map(normalizePost), sanity: false, blogState: "ready" }));
-  }
-
-  /* Sanity (public, read-only CDN — no token) --------------------------- */
-  var LIVE = '_type == "post" && defined(slug.current) && defined(publishedAt) && publishedAt <= now() && !(_id in path("drafts.**"))';
-  var CARD_FIELDS = 'title, "slug": slug.current, category, excerpt, publishedAt, youtubeUrl, ' +
-    '"image": featuredImage.asset->url, "imageAlt": featuredImage.alt, "hotspot": featuredImage.hotspot, ' +
-    '"crop": featuredImage.crop, "dims": featuredImage.asset->metadata.dimensions';
-  var LIST_QUERY = "*[" + LIVE + "] | order(publishedAt desc) {" + CARD_FIELDS + "}";
-  var ARTICLE_QUERY = "*[" + LIVE + " && slug.current == $slug][0]{" + CARD_FIELDS + ", seoTitle, seoDescription, " +
-    'content[]{..., _type == "image" => {..., "url": asset->url, "dims": asset->metadata.dimensions, alt, caption, hotspot, crop}}}';
-
-  function sanityFetch(query, params) {
-    if (!/^[a-z0-9-]+$/i.test(SANITY_ID)) return Promise.reject(new Error("SANITY_PROJECT_ID looks wrong"));
-    var url = "https://" + SANITY_ID + ".apicdn.sanity.io/v2025-01-01/data/query/" + encodeURIComponent(SANITY_DATASET) +
-      "?query=" + encodeURIComponent(query) + "&perspective=published";
-    Object.keys(params || {}).forEach(function (k) {
-      url += "&" + encodeURIComponent("$" + k) + "=" + encodeURIComponent(JSON.stringify(params[k]));
-    });
-    var ctrl = window.AbortController ? new AbortController() : null;
-    var timer = ctrl && window.setTimeout(function () { ctrl.abort(); }, 15000);
-    return fetch(url, ctrl ? { signal: ctrl.signal } : {})
-      .then(function (r) {
-        if (!r.ok) throw new Error("Sanity request failed (" + r.status + ")");
-        return r.json();
-      })
-      .then(function (d) {
-        window.clearTimeout(timer);
-        return d.result;
-      }, function (err) {
-        window.clearTimeout(timer);
-        throw err;
-      });
-  }
-
-  function loadPosts() {
-    var onArticle = !!doc.querySelector('[data-cms-list="article"]');
-    var query = onArticle ? '{"posts": ' + LIST_QUERY + ', "article": ' + ARTICLE_QUERY + "}" : LIST_QUERY;
-    return sanityFetch(query, onArticle ? { slug: currentPostSlug() } : null).then(function (result) {
-      var list = onArticle ? result && result.posts : result;
-      return {
-        posts: (list || []).map(normalizePost),
-        article: onArticle && result && result.article ? normalizePost(result.article) : null
-      };
-    });
   }
 
   function esc(value) {
@@ -115,6 +65,149 @@
     if (isNaN(d)) return esc(iso);
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   }
+
+  function loadContent() {
+    var base = window.SITE_CONTENT || {};
+    return Promise.resolve(merge(base, { posts: [], pagesCms: true, blogState: "loading" }));
+  }
+
+  /* Pages CMS posts live in the public GitHub repo. No token. */
+  function githubApi(path) {
+    return "https://api.github.com/repos/" +
+      encodeURIComponent(GITHUB_OWNER) + "/" + encodeURIComponent(GITHUB_REPO) +
+      "/contents/" + path.split("/").map(encodeURIComponent).join("/") +
+      "?ref=" + encodeURIComponent(GITHUB_BRANCH);
+  }
+
+  function fetchWithTimeout(url, options) {
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = ctrl && window.setTimeout(function () { ctrl.abort(); }, 15000);
+    var opts = options || {};
+    if (ctrl) opts.signal = ctrl.signal;
+    return fetch(url, opts).then(function (r) {
+      window.clearTimeout(timer);
+      return r;
+    }, function (err) {
+      window.clearTimeout(timer);
+      throw err;
+    });
+  }
+
+  function fetchJson(url) {
+    return fetchWithTimeout(url, { cache: "no-store" }).then(function (r) {
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error("GitHub request failed (" + r.status + ")");
+      return r.json();
+    });
+  }
+
+  function fetchText(url) {
+    return fetchWithTimeout(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("Post request failed (" + r.status + ")");
+      return r.text();
+    });
+  }
+
+  function decodeBase64(b64) {
+    var bin = atob(String(b64 || "").replace(/\n/g, ""));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+
+  function fileText(item) {
+    if (item.download_url) return fetchText(item.download_url);
+    return fetchJson(item.url).then(function (file) {
+      if (!file || !file.content) throw new Error("Empty post");
+      return decodeBase64(file.content);
+    });
+  }
+
+  function unquote(value) {
+    var v = String(value == null ? "" : value).trim();
+    if ((v.charAt(0) === '"' && v.charAt(v.length - 1) === '"') ||
+        (v.charAt(0) === "'" && v.charAt(v.length - 1) === "'")) {
+      v = v.slice(1, -1);
+    }
+    return v.replace(/\\"/g, '"').replace(/\\'/g, "'");
+  }
+
+  function flag(value, yes) {
+    return (yes ? /^(true|yes|1)$/i : /^(false|no|0)$/i).test(String(value || "").trim());
+  }
+
+  function isFutureDate(iso) {
+    var day = String(iso || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+    var now = new Date();
+    var today = now.getFullYear() + "-" +
+      String(now.getMonth() + 1).padStart(2, "0") + "-" +
+      String(now.getDate()).padStart(2, "0");
+    return day > today;
+  }
+
+  function parseMarkdownFile(text, fallbackSlug) {
+    text = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+    var data = {};
+    var body = text;
+    if (text.slice(0, 4) === "---\n") {
+      var close = text.indexOf("\n---", 4);
+      if (close >= 0) {
+        text.slice(4, close).split("\n").forEach(function (line) {
+          var m = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+          if (m && m[2].trim() !== "|" && m[2].trim() !== ">") data[m[1]] = unquote(m[2]);
+        });
+        body = text.slice(close + 4).replace(/^\n+/, "");
+      }
+    }
+    if (flag(data.draft, true) || flag(data.published, false) || /^draft$/i.test(data.status || "")) return null;
+    var date = data.date || data.published || data.publishedAt || "";
+    if (isFutureDate(date)) return null;
+    var plain = body
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/[#>*_`~\-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    var excerpt = data.excerpt || (plain.length > 190 ? plain.slice(0, 187).trim() + "…" : plain);
+    return normalizePost({
+      title: data.title || fallbackSlug,
+      slug: data.slug || fallbackSlug,
+      label: data.label || data.category || "",
+      date: date,
+      image: data.featured_image || data.image || data.cover || "",
+      imageAlt: data.featured_image_alt || data.imageAlt || data.title || "",
+      youtubeUrl: data.youtube || data.youtubeUrl || "",
+      video: data.video || "",
+      attachment: data.attachment || "",
+      excerpt: excerpt,
+      seoTitle: data.seoTitle || data.seo_title || "",
+      seoDescription: data.seoDescription || data.seo_description || data.description || "",
+      markdown: body
+    });
+  }
+
+  function loadPosts() {
+    return fetchJson(githubApi(POSTS_PATH)).then(function (items) {
+      if (items && !Array.isArray(items) && items.type === "file") items = [items];
+      if (!items || !Array.isArray(items)) return [];
+      var files = items.filter(function (item) {
+        var name = String(item && item.name || "");
+        return item && item.type === "file" && /\.md$/i.test(name) &&
+          !/^readme\.md$/i.test(name) && name.charAt(0) !== "_" && name.charAt(0) !== ".";
+      });
+      return Promise.all(files.map(function (item) {
+        var fallback = String(item.name || "").replace(/\.md$/i, "");
+        return fileText(item).then(function (text) {
+          return parseMarkdownFile(text, fallback);
+        }, function () { return null; });
+      }));
+    }).then(function (posts) {
+      return newestFirst((posts || []).filter(function (p) { return p && p.title && p.slug; }));
+    });
+  }
+
+  /* Projects ------------------------------------------------------------- */
 
   function img(src, alt, dark, focus) {
     return '<img' + (dark ? ' class="lift"' : "") + ' src="' + esc(src) + '" alt="' + esc(alt) + '"' +
@@ -176,11 +269,7 @@
       (withSummary && p.summary ? "<p>" + esc(p.summary) + "</p>" : "") + "</div></a>";
   }
 
-  /* Blog posts ----------------------------------------------------------- */
-
-  function postLabel(value) {
-    return LABELS[slug(value)] || String(value || "").trim();
-  }
+  /* Blog ----------------------------------------------------------------- */
 
   function postUrl(key) {
     return "article.html?post=" + encodeURIComponent(key);
@@ -194,94 +283,62 @@
     try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
   }
 
-  /* Sanity posts and the sample posts in content.js share this shape */
   function normalizePost(p) {
-    var key = (p.slug && p.slug.current) || p.slug || slug(p.title);
+    var key = p.slug || slug(p.title);
     return {
       slug: key,
       url: postUrl(key),
       title: p.title || "",
-      label: postLabel(p.label || p.category),
+      label: String(p.label || "").trim(),
       excerpt: p.excerpt || "",
-      date: p.publishedAt || p.date || "",
+      date: p.date || "",
       image: p.image || "",
-      imageAlt: p.imageAlt || "",
-      hotspot: p.hotspot || null,
-      crop: p.crop || null,
-      dims: p.dims || null,
-      darkPhoto: !!p.darkPhoto,
+      imageAlt: p.imageAlt || p.title || "",
       youtubeUrl: p.youtubeUrl || "",
-      content: p.content || null,
+      video: p.video || "",
+      attachment: p.attachment || "",
+      markdown: p.markdown || "",
       seoTitle: p.seoTitle || "",
-      seoDescription: p.seoDescription || "",
-      sample: !!p.sample
+      seoDescription: p.seoDescription || ""
     };
   }
 
   function time(p) {
-    return Date.parse(p.date) || 0;
+    return Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date + "T12:00:00" : p.date) || 0;
   }
 
   function newestFirst(list) {
     return (list || []).slice().sort(function (a, b) { return time(b) - time(a); });
   }
 
-  /* The newest post leads; undated sample posts keep their order from content.js */
   function arrangePosts(list) {
     var sorted = newestFirst(list);
     return { featured: sorted[0] || null, rest: sorted.slice(1), all: sorted };
   }
 
-  function clamp01(n) {
-    return Math.min(1, Math.max(0, n));
-  }
-
-  /* Sanity CDN images get size/format params (and crop + hotspot); local img/ paths are left alone */
-  function imageSrc(src, meta, w, h) {
+  /* Pages CMS stores uploads as /content/uploads/... . Keep that site path. */
+  function imageSrc(src) {
+    src = String(src || "").trim();
     if (!src) return "";
-    if (!/^https:\/\/cdn\.sanity\.io\//i.test(src)) return src;
-    meta = meta || {};
-    var q = ["auto=format", "q=75"];
-    var dims = meta.dims, crop = meta.crop, hs = meta.hotspot;
-    var cl = 0, ct = 0, cw = 1, ch = 1;
-    if (crop && dims && dims.width && dims.height) {
-      cl = crop.left || 0;
-      ct = crop.top || 0;
-      cw = 1 - cl - (crop.right || 0);
-      ch = 1 - ct - (crop.bottom || 0);
-      if (cw > 0 && ch > 0 && (cw < 1 || ch < 1)) {
-        q.push("rect=" + [Math.round(cl * dims.width), Math.round(ct * dims.height),
-          Math.round(cw * dims.width), Math.round(ch * dims.height)].join(","));
-      } else {
-        cl = 0; ct = 0; cw = 1; ch = 1;
-      }
-    }
-    if (!h && dims && dims.width) w = Math.min(w, Math.round(dims.width * cw));
-    q.push("w=" + w);
-    if (h) {
-      q.push("h=" + h, "fit=crop");
-      if (hs && isFinite(hs.x) && isFinite(hs.y)) {
-        q.push("crop=focalpoint", "fp-x=" + clamp01((hs.x - cl) / cw).toFixed(3), "fp-y=" + clamp01((hs.y - ct) / ch).toFixed(3));
-      }
-    }
-    return src + (src.indexOf("?") < 0 ? "?" : "&") + q.join("&");
+    if (/^(https?:)?\/\//i.test(src)) return src;
+    if (src.charAt(0) === "/") src = src.slice(1);
+    return src;
   }
 
   function postImg(p, w, h, alt, eager) {
-    var src = imageSrc(p.image, p, w, h);
+    var src = imageSrc(p.image);
     if (!src) return "";
-    return '<img' + (p.darkPhoto ? ' class="lift"' : "") + ' src="' + esc(src) + '" alt="' + esc(alt || "") +
-      '" width="' + w + '" height="' + h + '"' + (eager ? ' fetchpriority="high"' : ' loading="lazy" decoding="async"') + ">";
+    return '<img src="' + esc(src) + '" alt="' + esc(alt || "") + '" width="' + w + '" height="' + h + '"' +
+      (eager ? ' fetchpriority="high"' : ' loading="lazy" decoding="async"') + ">";
   }
 
-  /* Media link: an empty gray box when the post has no photo */
   function postMedia(cls, p, w, h) {
     var pic = postImg(p, w, h, p.imageAlt || "");
     return '<a class="' + cls + (pic ? "" : " media-empty") + '" href="' + esc(p.url) + '" tabindex="-1" aria-hidden="true">' + pic + "</a>";
   }
 
   function postDate(p) {
-    return p.date ? formatDate(p.date) : (p.sample ? "Sample post" : "");
+    return p.date ? formatDate(p.date) : "";
   }
 
   function metaSpans(p) {
@@ -329,14 +386,6 @@
       '<span class="blog-list-excerpt">' + esc(p.excerpt) + "</span></a></li>";
   }
 
-  function blogNote(c, emptyText) {
-    var text = c.blogState === "loading" ? "Loading posts…" :
-      c.blogState === "error" ? "Posts couldn’t be loaded right now. Please try again in a few minutes." : emptyText;
-    return '<p class="post-grid-note" role="status">' + esc(text) + "</p>";
-  }
-
-  /* Portable Text -> HTML (text is escaped; only safe links) ------------- */
-
   function safeHref(href) {
     var h = String(href || "").trim();
     var test = h.replace(/[\s\u0000-\u001f]/g, "");
@@ -346,36 +395,12 @@
     return h;
   }
 
-  var DECORATORS = { strong: "strong", em: "em", code: "code", underline: "u", "strike-through": "s" };
-
-  function ptSpans(block) {
-    var defs = {};
-    (block.markDefs || []).forEach(function (d) { if (d && d._key) defs[d._key] = d; });
-    return (block.children || []).map(function (span) {
-      if (!span || typeof span.text !== "string") return "";
-      var html = esc(span.text).replace(/\n/g, "<br>");
-      (span.marks || []).forEach(function (m) {
-        var def = defs[m];
-        if (def) {
-          var href = def._type === "link" ? safeHref(def.href) : "";
-          if (href) {
-            html = '<a href="' + esc(href) + '"' + (/^https?:/i.test(href) ? ' target="_blank" rel="noopener"' : "") + ">" + html + "</a>";
-          }
-          return;
-        }
-        if (DECORATORS[m]) html = "<" + DECORATORS[m] + ">" + html + "</" + DECORATORS[m] + ">";
-      });
-      return html;
-    }).join("");
-  }
-
   function youtubeId(url) {
     var m = String(url || "").trim().match(
       /(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
     return m ? m[1] : "";
   }
 
-  /* Same markup as the static video players; site.js binds [data-video] */
   function videoFigure(id, title, poster) {
     if (!id) return "";
     var t = title || "Watch the video";
@@ -385,59 +410,111 @@
       '<button class="video-play" type="button" aria-label="Play video: ' + esc(t) + '">' +
       '<span class="video-play-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg></span>' +
       "</button>" +
-      '<figcaption class="video-label">Video coming soon</figcaption></figure>';
+      '<figcaption class="video-label">' + esc(t) + "</figcaption></figure>";
   }
 
-  function ptImage(b) {
-    var src = imageSrc(b.url || b.image, b, 1600, 0);
-    if (!src) return "";
-    var d = b.dims || {};
-    var w = d.width || 1024, h = d.height || 576;
-    if (b.crop && d.width && d.height) {
-      w = Math.round(w * (1 - (b.crop.left || 0) - (b.crop.right || 0))) || w;
-      h = Math.round(h * (1 - (b.crop.top || 0) - (b.crop.bottom || 0))) || h;
+  function fileVideo(src, title) {
+    src = safeHref(src);
+    if (!src || youtubeId(src)) return "";
+    return '<figure class="wide"><video controls preload="metadata" style="width:100%;height:auto" aria-label="' +
+      esc(title || "Blog video") + '"><source src="' + esc(imageSrc(src)) + '"></video></figure>';
+  }
+
+  function inlineMarkdown(text) {
+    var s = String(text || "");
+    var out = "";
+    var re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(\[([^\]]+)\]\(([^)]+)\))/g;
+    var last = 0;
+    var m;
+    while ((m = re.exec(s))) {
+      out += esc(s.slice(last, m.index));
+      if (m[1]) out += "<code>" + esc(m[1].slice(1, -1)) + "</code>";
+      else if (m[2]) out += "<strong>" + inlineMarkdown(m[2].slice(2, -2)) + "</strong>";
+      else if (m[3]) out += "<strong>" + inlineMarkdown(m[3].slice(2, -2)) + "</strong>";
+      else if (m[4]) out += "<em>" + inlineMarkdown(m[4].slice(1, -1)) + "</em>";
+      else if (m[5]) out += "<em>" + inlineMarkdown(m[5].slice(1, -1)) + "</em>";
+      else if (m[6]) {
+        var href = safeHref(m[8]);
+        out += href
+          ? '<a href="' + esc(href) + '"' + (/^https?:/i.test(href) ? ' target="_blank" rel="noopener"' : "") + ">" + inlineMarkdown(m[7]) + "</a>"
+          : inlineMarkdown(m[7]);
+      }
+      last = m.index + m[0].length;
     }
-    return '<figure class="wide"><img' + (b.darkPhoto ? ' class="lift"' : "") + ' src="' + esc(src) + '" alt="' + esc(b.alt) +
-      '" width="' + w + '" height="' + h + '" loading="lazy" decoding="async">' +
-      (b.caption ? "<figcaption>" + esc(b.caption) + "</figcaption>" : "") + "</figure>";
+    return out + esc(s.slice(last));
   }
 
-  /* Nested list levels are flattened: the design styles one level of list */
-  function portableText(blocks, postTitle) {
-    var out = "", list = "";
+  function markdownToHtml(markdown) {
+    var lines = String(markdown || "").replace(/\r\n?/g, "\n").split("\n");
+    var out = [];
+    var paragraph = [];
+    var list = "";
+    function closeParagraph() {
+      if (!paragraph.length) return;
+      out.push("<p>" + inlineMarkdown(paragraph.join(" ")) + "</p>");
+      paragraph = [];
+    }
     function closeList() {
-      if (list) out += "</" + list + ">";
+      if (list) out.push("</" + list + ">");
       list = "";
     }
-    (blocks || []).forEach(function (b) {
-      if (!b) return;
-      if (b._type === "block" && b.listItem) {
-        var tag = b.listItem === "number" ? "ol" : "ul";
-        if (list !== tag) {
-          closeList();
-          out += "<" + tag + ">";
-          list = tag;
-        }
-        out += "<li>" + ptSpans(b) + "</li>";
+    lines.forEach(function (line) {
+      var t = line.trim();
+      if (!t) {
+        closeParagraph();
+        closeList();
         return;
       }
-      closeList();
-      if (b._type === "block") {
-        var inner = ptSpans(b);
-        if (!inner.replace(/<[^>]*>/g, "").trim()) return;
-        var style = b.style || "normal";
-        if (/^h[2-4]$/.test(style)) out += "<" + style + ">" + inner + "</" + style + ">";
-        else if (style === "h1") out += "<h2>" + inner + "</h2>";
-        else if (style === "blockquote") out += '<blockquote class="pull-quote"><p>' + inner + "</p></blockquote>";
-        else out += "<p>" + inner + "</p>";
-      } else if (b._type === "image") {
-        out += ptImage(b);
-      } else if (b._type === "youtube") {
-        out += videoFigure(youtubeId(b.url), b.caption || postTitle);
+      var image = t.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/);
+      if (image) {
+        closeParagraph();
+        closeList();
+        var src = safeHref(image[2]);
+        if (src) {
+          out.push('<figure class="wide"><img src="' + esc(imageSrc(src)) + '" alt="' + esc(image[1]) +
+            '" loading="lazy" decoding="async"></figure>');
+        }
+        return;
       }
+      if (/^https?:\/\/\S+$/.test(t) && youtubeId(t)) {
+        closeParagraph();
+        closeList();
+        out.push(videoFigure(youtubeId(t), "Watch the video", ""));
+        return;
+      }
+      var heading = t.match(/^(#{1,4})\s+(.+)$/);
+      if (heading) {
+        closeParagraph();
+        closeList();
+        var level = heading[1].length <= 2 ? 2 : Math.min(4, heading[1].length);
+        out.push("<h" + level + ">" + inlineMarkdown(heading[2]) + "</h" + level + ">");
+        return;
+      }
+      var quote = t.match(/^>\s*(.+)$/);
+      if (quote) {
+        closeParagraph();
+        closeList();
+        out.push('<blockquote class="pull-quote"><p>' + inlineMarkdown(quote[1]) + "</p></blockquote>");
+        return;
+      }
+      var bullet = t.match(/^[-*+]\s+(.+)$/);
+      var number = t.match(/^\d+\.\s+(.+)$/);
+      if (bullet || number) {
+        closeParagraph();
+        var wanted = number ? "ol" : "ul";
+        if (list !== wanted) {
+          closeList();
+          out.push("<" + wanted + ">");
+          list = wanted;
+        }
+        out.push("<li>" + inlineMarkdown((bullet || number)[1]) + "</li>");
+        return;
+      }
+      paragraph.push(t);
     });
+    closeParagraph();
     closeList();
-    return out;
+    return out.join("");
   }
 
   /* Article page --------------------------------------------------------- */
@@ -478,12 +555,22 @@
   }
 
   function setJsonLd(data) {
-    var el = doc.head.querySelector('script[type="application/ld+json"]');
+    var el = doc.head.querySelector("script[data-blog-jsonld]");
+    if (!el) {
+      var scripts = doc.head.querySelectorAll('script[type="application/ld+json"]');
+      for (var i = 0; i < scripts.length; i++) {
+        if (/BlogPosting/.test(scripts[i].textContent || "")) {
+          el = scripts[i];
+          break;
+        }
+      }
+    }
     if (!el) {
       el = doc.createElement("script");
       el.type = "application/ld+json";
       doc.head.appendChild(el);
     }
+    el.setAttribute("data-blog-jsonld", "");
     el.textContent = JSON.stringify(data, null, 2).replace(/</g, "\\u003c");
   }
 
@@ -491,7 +578,7 @@
     var title = p.seoTitle || p.title + " | Resources | " + SITE_NAME;
     var desc = p.seoDescription || p.excerpt;
     var url = absUrl(postUrl(p.slug));
-    var image = p.image ? absUrl(imageSrc(p.image, p, 1200, 630)) : "";
+    var image = p.image ? absUrl(imageSrc(p.image)) : "";
     doc.title = title;
     setMeta("name", "description", desc);
     setMeta("name", "robots", "");
@@ -510,7 +597,7 @@
       publisher: { "@type": "Organization", name: ORG_NAME, logo: { "@type": "ImageObject", url: absUrl("img/brand/nclogo.png") } },
       mainEntityOfPage: { "@type": "WebPage", "@id": url }
     };
-    if (p.date) ld.datePublished = new Date(time(p) || p.date).toISOString();
+    if (p.date) ld.datePublished = /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : new Date(time(p)).toISOString();
     if (image) ld.image = [image];
     setJsonLd(ld);
   }
@@ -531,20 +618,20 @@
 
   function articleHtml(p, author) {
     var date = postDate(p);
-    var videoId = youtubeId(p.youtubeUrl);
     var hero = postImg(p, 1600, 686, p.imageAlt, true);
+    var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
+    var attachment = safeHref(p.attachment);
     return '<header class="article-head tone-light"><div class="wrap">' +
       '<ol class="crumbs on-light"><li><a href="index.html">Home</a></li><li><a href="jobsite.html">Resources</a></li><li>' + esc(p.title) + "</li></ol>" +
       (p.label ? '<p class="eyebrow">' + esc(p.label) + "</p>" : "") +
       "<h1>" + esc(p.title) + "</h1>" +
       '<p class="article-meta"><span>By <strong>' + esc(author) + "</strong></span>" +
-      (date ? (p.date ? '<span><time datetime="' + esc(p.date) + '">' + date + "</time></span>" : "<span>" + date + "</span>") : "") +
+      (date ? '<span><time datetime="' + esc(p.date) + '">' + date + "</time></span>" : "") +
       "</p></div></header>" +
       (hero ? '<figure class="article-hero">' + hero + "</figure>" : "") +
-      '<div class="prose">' +
-      (p.excerpt ? '<p class="intro">' + esc(p.excerpt) + "</p>" : "") +
-      videoFigure(videoId, p.title, p.image ? imageSrc(p.image, p, 1600, 900) : "") +
-      portableText(p.content, p.title) +
+      '<div class="prose">' + markdownToHtml(p.markdown) +
+      (yt ? videoFigure(yt, p.title, "") : fileVideo(p.video, p.title)) +
+      (attachment ? '<p><a class="btn btn-outline" href="' + esc(imageSrc(attachment)) + '" target="_blank" rel="noopener">View attached file</a></p>' : "") +
       "</div>" +
       '<aside class="article-cta"><div class="cta-panel"><div>' +
       '<p class="eyebrow">Start your project</p><h2>Planning something similar?</h2>' +
@@ -553,12 +640,15 @@
   }
 
   function findPost(c, key) {
-    if (c.sanity) return c.article || null;
     var list = c.posts || [];
     for (var i = 0; i < list.length; i++) {
       if (list[i].slug === key) return list[i];
     }
     return null;
+  }
+
+  function readyPosts(c) {
+    return c.blogState === "ready" ? (c.posts || []) : null;
   }
 
   var LISTS = {
@@ -572,14 +662,32 @@
           (i === 0 ? ' fetchpriority="high"' : ' loading="lazy" decoding="async"') + ">";
       }).join("");
     },
+    homeBlog: function (c) {
+      var posts = readyPosts(c);
+      if (!posts) return null;
+      var featured = arrangePosts(posts).featured;
+      if (!featured) return null;
+      return '<div class="blog-feature reveal is-visible">' + blogFeature(featured) + "</div>";
+    },
+    resourcesBlog: function (c) {
+      var posts = readyPosts(c);
+      if (!posts) return null;
+      var arranged = arrangePosts(posts);
+      if (!arranged.featured) return null;
+      var rest = arranged.rest.map(function (p) { return postCard(p); }).join("");
+      return '<div class="blog-feature reveal is-visible">' + blogFeature(arranged.featured) + "</div>" +
+        (rest ? '<div class="post-grid blog-rest">' + rest + "</div>" : "");
+    },
     homeFeatured: function (c) {
-      var a = arrangePosts(c.posts);
-      if (a.featured) return blogFeature(a.featured);
-      return c.sanity ? '<div class="blog-feature-body">' + blogNote(c, "No posts yet. Check back soon.") + "</div>" : null;
+      var posts = readyPosts(c);
+      if (!posts) return null;
+      var featured = arrangePosts(posts).featured;
+      return featured ? blogFeature(featured) : null;
     },
     homeRecent: function (c) {
-      if (!c.sanity && !(c.posts || []).length) return null;
-      return arrangePosts(c.posts).rest.slice(0, 3).map(blogListItem).join("");
+      var posts = readyPosts(c);
+      if (!posts || !posts.length) return null;
+      return arrangePosts(posts).rest.slice(0, 3).map(blogListItem).join("");
     },
     featuredProjects: function (c) {
       var list = (c.projects || []).filter(function (p) { return p.featured; });
@@ -612,39 +720,43 @@
       return same.concat(rest).slice(0, 3).map(function (x) { return projectCard(x, "h3", false); }).join("");
     },
     latestPosts: function (c) {
-      if (!c.sanity && !(c.posts || []).length) return null;
-      return arrangePosts(c.posts).all.slice(0, 3).map(function (p) { return postCard(p); }).join("");
+      var posts = readyPosts(c);
+      if (!posts || !posts.length) return null;
+      return arrangePosts(posts).all.slice(0, 3).map(function (p) { return postCard(p); }).join("");
     },
     featuredPost: function (c) {
-      var a = arrangePosts(c.posts);
-      if (a.featured) return featuredPost(a.featured);
-      return c.sanity ? blogNote(c, "No posts yet. Check back soon.") : null;
+      var posts = readyPosts(c);
+      if (!posts) return null;
+      var featured = arrangePosts(posts).featured;
+      return featured ? featuredPost(featured) : null;
     },
     archivePosts: function (c) {
-      if (!c.sanity && !(c.posts || []).length) return null;
-      return arrangePosts(c.posts).rest.map(function (p) { return postCard(p); }).join("");
+      var posts = readyPosts(c);
+      if (!posts || !posts.length) return null;
+      return arrangePosts(posts).rest.map(function (p) { return postCard(p); }).join("");
     },
     article: function (c) {
       var key = currentPostSlug();
-      if (!key && !c.sanity) return null;
-      if (c.blogState === "loading") return articleMessage("Loading post…", "One moment.", "Loading");
+      if (!key) return null;
+      if (c.blogState === "loading") return articleMessage("Loading post…", "Loading the post.", "Loading");
       if (c.blogState === "error") {
-        return articleMessage("This post couldn’t be loaded.", "Please try again in a few minutes, or browse all posts.");
+        return articleMessage("This post couldn’t be loaded.", "Please try again in a few minutes.");
       }
-      var p = key ? findPost(c, key) : null;
+      var p = findPost(c, key);
       if (!p) return articleNotFound();
       var author = (c.owner && c.owner.name) || "James";
       applyPostSeo(p, author);
       return articleHtml(p, author);
     },
     relatedPosts: function (c) {
+      if (c.blogState !== "ready") return null;
       var key = currentPostSlug();
-      if (!key && !c.sanity) return null;
-      var current = key ? findPost(c, key) : null;
-      var others = arrangePosts(c.posts).all.filter(function (x) { return x.slug !== key; });
-      var same = others.filter(function (x) { return current && current.label && x.label === current.label; });
-      var rest = others.filter(function (x) { return same.indexOf(x) < 0; });
-      return same.concat(rest).slice(0, 3).map(function (p) { return postCard(p, true); }).join("");
+      var others = arrangePosts(c.posts).all.filter(function (x) { return x.slug !== key; }).slice(0, 3);
+      if (!others.length) return "";
+      return '<div class="wrap"><div class="section-head"><div>' +
+        '<p class="eyebrow">Keep reading</p><h2 id="related-title">More from the jobsite.</h2></div>' +
+        '<div class="section-aside"><a class="link-arrow" href="jobsite.html">All posts</a></div></div>' +
+        '<div class="post-grid">' + others.map(function (p) { return postCard(p, true); }).join("") + "</div></div>";
     }
   };
 
@@ -659,7 +771,7 @@
         el.src = src;
         if (data.alt != null) el.alt = data.alt;
       } else {
-        el.innerHTML = '<img src="' + esc(src) + '" alt="' + esc(data.alt) + '" loading="lazy" decoding="async">';
+        el.innerHTML = '<img src="' + esc(src) + '" alt="' + esc(data.alt || "") + '" loading="lazy" decoding="async">';
         el.classList.add("has-photo");
       }
     });
@@ -669,14 +781,18 @@
       if (postsOnly && !POST_LISTS[name]) return;
       var build = LISTS[name];
       var html = build && build(content);
-      /* post lists may legitimately become empty; other lists keep their fallback */
-      if (typeof html === "string" && (html || POST_LISTS[name])) el.innerHTML = html;
+      /*
+        null keeps the static HTML. That is what leaves "Our blog is coming soon."
+        in place when Pages CMS has not published a post yet.
+        An empty string clears a list once posts have loaded.
+      */
+      if (html == null || typeof html !== "string") return;
+      if (html || POST_LISTS[name]) el.innerHTML = html;
     });
 
     doc.dispatchEvent(new CustomEvent("cms:rendered", { detail: { postsOnly: !!postsOnly } }));
   }
 
-  /* ?cms — outline every owner-managed area so it's obvious what can be edited */
   function addTags() {
     if (!doc.body.classList.contains("show-cms")) return;
     doc.querySelectorAll("[data-cms-label]").forEach(function (el) {
@@ -698,10 +814,8 @@
     bar.setAttribute("role", "status");
     bar.innerHTML =
       "<p><strong>Content view.</strong> Areas outlined in gold are owner-managed. Photos and projects come from " +
-      "<code>js/content.js</code>. Blog posts " + (SANITY_ID
-        ? "come from Sanity Studio (published posts only)."
-        : "will come from Sanity Studio once <code>SANITY_PROJECT_ID</code> is set in <code>js/config.js</code>; " +
-          "until then the sample posts in <code>js/content.js</code> are shown.") + "</p>" +
+      "<code>js/content.js</code>. Blog posts come from Pages CMS Markdown files in <code>content/posts</code>. " +
+      "Until a post is published, the site keeps the “coming soon” message.</p>" +
       '<button type="button" class="cms-banner-close" aria-label="Hide content view">×</button>';
     bar.querySelector("button").addEventListener("click", function () {
       doc.body.classList.remove("show-cms");
@@ -718,12 +832,12 @@
 
   loadContent().then(function (content) {
     render(content);
-    if (!content.sanity || !hasPostLists()) return;
-    loadPosts().then(function (data) {
-      render(merge(content, { posts: data.posts, article: data.article, blogState: "ready" }), true);
+    if (!hasPostLists()) return;
+    loadPosts().then(function (posts) {
+      render(merge(content, { posts: posts, blogState: "ready" }), true);
     }, function (err) {
-      if (window.console) console.warn("Blog posts could not be loaded from Sanity.", err);
-      render(merge(content, { posts: [], article: null, blogState: "error" }), true);
+      if (window.console) console.warn("Pages CMS blog posts could not be loaded.", err);
+      render(merge(content, { posts: [], blogState: "error" }), true);
     });
   }).catch(function () { /* keep static fallback */ });
 

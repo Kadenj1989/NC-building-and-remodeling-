@@ -98,7 +98,7 @@
 
   <main id="main">
     <!-- Hero
-         ▓▓ OWNER-MANAGED: rotating hero photos come from js/content.js → hero.images (future Sanity). -->
+         ▓▓ OWNER-MANAGED: rotating hero photos come from js/content.js → hero.images. -->
     <section class="hero" data-cms-label="Hero slideshow photos">
       <figure class="hero-media" data-hero-slides data-cms-list="heroSlides">
         <img class="hero-slide is-active" src="img/hero/hero-framing.jpg" alt="Crew framing a two-story house at sunset" width="1024" height="576" fetchpriority="high">
@@ -240,7 +240,7 @@
     <!-- Owner -->
     <section class="section tone-white nc-flag-bg" id="about">
       <div class="wrap split">
-        <!-- ▓▓ OWNER-MANAGED: James's photo comes from js/content.js → owner.photo (future Sanity). -->
+        <!-- ▓▓ OWNER-MANAGED: James's photo comes from js/content.js → owner.photo. -->
         <div class="portrait-col">
           <div class="portrait-wrap reveal" data-cms-label="Owner photo">
           <div class="portrait has-photo" data-cms-img="owner">
@@ -280,7 +280,7 @@
             <a class="link-arrow" href="projects.html">All projects</a>
           </div>
         </div>
-        <!-- ▓▓ OWNER-MANAGED: projects marked featured in js/content.js → projects (future Sanity).
+        <!-- ▓▓ OWNER-MANAGED: projects marked featured in js/content.js → projects.
              The cards below are a fallback and are redrawn by js/cms.js. -->
         <div class="work-grid reveal" data-cms-list="featuredProjects" data-cms-label="Featured projects">
           <a class="project" href="project.html?p=fireplace-remodel" data-cat="remodeling">
@@ -344,9 +344,12 @@
       </div>
     </section>
 
-    <!-- From the Jobsite — blog coming soon. Static on purpose: no data-cms-list here, so js/cms.js never injects posts. -->
+    <!--
+      Pages CMS blog. With no posts in content/posts, this "coming soon" block stays.
+      The first published post replaces it.
+    -->
     <section class="section tone-gray" id="jobsite">
-      <div class="wrap">
+      <div class="wrap" data-cms-list="homeBlog" data-cms-label="Homepage blog">
         <div class="soon-feature reveal">
           <figure class="soon-media">
             <img src="img/blog/home-blog-soon-workbench.jpg" alt="Tape measure, carpenter pencil and a plain notebook on a wooden workbench" width="1024" height="576" loading="lazy" decoding="async">
@@ -416,7 +419,7 @@
     </section>
 
     <!-- Final CTA
-         ▓▓ OWNER-MANAGED: background photo from js/content.js → closingImage (future Sanity). -->
+         ▓▓ OWNER-MANAGED: background photo from js/content.js → closingImage. -->
     <section class="final-cta" data-cms-label="Closing photo">
       <img src="img/nc/nc-build-mountains.jpg" alt="Wood-framed house under construction on a forested mountainside at sunset, with a North Carolina flag" width="1024" height="576" loading="lazy" decoding="async" data-cms-img="closingImage">
       <div class="wrap reveal">
@@ -481,10 +484,10 @@
 
   <a class="btn btn-primary mobile-cta" href="#jobber-request" data-link="jobber">Request a Quote</a>
 
-  <script src="js/config.js?v=12"></script>
-  <!-- Owner-managed content: js/content.js holds photos/projects (and sample posts), js/cms.js draws them and the Sanity blog posts into the page. -->
-  <script src="js/content.js?v=21"></script>
-  <script src="js/cms.js?v=10"></script>
-  <script src="js/site.js?v=39"></script>
+  <script src="js/config.js?v=13"></script>
+  <!-- Owner-managed content: js/content.js holds photos and projects. js/cms.js draws them, and loads blog posts from Pages CMS. -->
+  <script src="js/content.js?v=22"></script>
+  <script src="js/cms.js?v=11"></script>
+  <script src="js/site.js?v=41"></script>
 </body>
 </html>

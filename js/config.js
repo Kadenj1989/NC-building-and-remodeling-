@@ -4,7 +4,8 @@
   "coming soon" note instead of going nowhere; empty phone/email stay hidden.
 
   Photos and projects are NOT here — they live in js/content.js.
-  Blog posts come from Sanity once SANITY_PROJECT_ID below is filled in.
+  Blog posts are Pages CMS Markdown files in content/posts. The site reads
+  them from the public GitHub repository named below. No API token.
 */
 window.SITE_CONFIG = {
   /* ===================== JOBBER — QUOTE REQUESTS =====================
@@ -42,17 +43,16 @@ window.SITE_CONFIG = {
      ================================================================== */
   PARTNER_FORM_URL: "",
 
-  /* ===================== SANITY — BLOG POSTS =====================
-     These are public IDs, not passwords. Never paste a Sanity API token here.
-     SANITY_PROJECT_ID: from sanity.io/manage (8 letters/numbers, e.g. "ab12cd34").
-       Leave it "" to show the sample posts from js/content.js instead.
-     SANITY_DATASET: almost always "production". Must match studio/.env.
-     SITE_URL: the live address, e.g. "https://www.example.com" (no slash at
-       the end). Optional — used for share links and search engines. */
-  SANITY_PROJECT_ID: "",
-  SANITY_DATASET: "production",
+  /* ===================== PAGES CMS — BLOG POSTS =====================
+     Posts are Markdown files in content/posts, written in Pages CMS.
+     GITHUB_OWNER / GITHUB_REPO / GITHUB_BRANCH must match the public
+     repository Pages CMS commits to. There is no API token.
+     SITE_URL: the live address, e.g. "https://www.example.com" (no slash
+       at the end). Optional — used for share links and search engines.
+     CMS_STUDIO_URL: owner login. This opens Pages CMS. */
+  GITHUB_OWNER: "Kadenj1989",
+  GITHUB_REPO: "NC-building-and-remodeling-",
+  GITHUB_BRANCH: "main",
   SITE_URL: "",
-
-  // Content editor login (hosted Sanity Studio URL) — linked as "Owner login" in the footer
-  CMS_STUDIO_URL: ""
+  CMS_STUDIO_URL: "https://app.pagescms.org"
 };

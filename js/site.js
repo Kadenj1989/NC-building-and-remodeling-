@@ -137,7 +137,7 @@
     studio: {
       url: config.CMS_STUDIO_URL,
       title: "Owner login",
-      text: "This will open the content editor, where the owner writes and publishes blog posts. It goes live once Sanity Studio is set up."
+      text: "This opens Pages CMS, where the owner writes and publishes blog posts."
     },
     google: {
       url: config.GOOGLE_REVIEWS_URL,
@@ -217,7 +217,7 @@
       });
       applyFilter(chip.getAttribute("data-filter"));
     });
-    /* posts can arrive after load (Sanity) — keep the chosen topic applied */
+    /* posts can arrive after load — keep the chosen topic applied */
     doc.addEventListener("cms:rendered", function () {
       var on = bar.querySelector("[data-filter].is-on");
       if (on) applyFilter(on.getAttribute("data-filter"));

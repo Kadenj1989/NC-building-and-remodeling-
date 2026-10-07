@@ -1,4 +1,2 @@
 .env
-studio/.env
-studio/node_modules
-studio/dist
+studio/
