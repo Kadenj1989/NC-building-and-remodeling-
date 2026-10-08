@@ -1,6 +1,9 @@
 media:
-  input: content/uploads
-  output: /content/uploads
+  - name: uploads
+    label: Uploads
+    input: content/uploads
+    output: /content/uploads
+    rename: safe
 
 content:
   - name: posts
@@ -44,7 +47,13 @@ content:
         label: Featured Image
         type: image
         required: false
-        description: Any size photo is fine. The site fits it to the blog, so it is not too large, too small, or blurry.
+        description: Optional cover photo used on the Resources list and home-page cards only. It does not decide where photos appear inside the article. Leave it blank to use the first photo from the post as the cover.
+        options:
+          media: uploads
+          categories: [image]
+          extensions: [jpg, jpeg, png, webp, gif]
+          path: content/uploads
+          rename: safe
 
       - name: youtube
         label: YouTube video
@@ -56,8 +65,18 @@ content:
         label: File / Document
         type: file
         required: false
+        options:
+          media: uploads
 
       - name: body
         label: Blog Post
         type: rich-text
         required: true
+        description: Write the post here. Place a photo wherever you want it to appear, including between paragraphs. Add as many photos as you need. Each photo shows up on the website in that spot.
+        options:
+          format: markdown
+          media: uploads
+          categories: [image]
+          extensions: [jpg, jpeg, png, webp, gif]
+          path: content/uploads
+          rename: safe

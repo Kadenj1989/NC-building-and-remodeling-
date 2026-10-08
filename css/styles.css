@@ -742,7 +742,7 @@ article[id] {
 
 .trust-list {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .trust-item {
@@ -1601,9 +1601,17 @@ a.chip {
   text-decoration: none;
 }
 
-.blog-home-cats {
+.blog-home-more {
   margin-top: 36px;
+}
+
+.blog-home-cats {
+  margin-top: 28px;
   margin-bottom: 0;
+}
+
+.home-posts.is-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 [data-cms-list="relatedPosts"]:not(:has(.wrap)) {
@@ -4384,6 +4392,7 @@ a.chip {
   .svc-list,
   .work-grid,
   .post-grid,
+  .home-posts.is-two,
   .project-grid {
     grid-template-columns: 1fr;
   }
@@ -4617,7 +4626,8 @@ a.chip {
 
 @media (min-width: 901px) {
   .trust-item {
-    padding: 18px 22px;
+    gap: 12px;
+    padding: 18px 16px;
   }
 }
 

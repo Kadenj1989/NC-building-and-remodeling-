@@ -5,11 +5,15 @@
 
   Pages CMS (.pages.yml) saves each post as content/posts/<slug>.md with
   title, slug, date, category, featured_image, youtube, attachment, and body.
+  Photos added inside the post are saved in the body, in the order and
+  position the owner chose. The site draws each one in that same spot.
   category is one of: jobs, testimonials, general.
   youtube is a YouTube link. The video plays on the blog and is not stored in the repo.
   Images and files use the public path /content/uploads/.
-  This file reads those Markdown files, and the uploads they point at,
-  from the public GitHub repository.
+  Posts and uploads are read from the latest commit on the public GitHub
+  repository, not from the cached branch URL. GitHub's raw CDN keeps a
+  branch URL stale for several minutes after a save, so an edited photo,
+  file, video link, or paragraph would otherwise stay on the old version.
   Blog posts open at article.html?post=<slug>.
 
   Markup hooks:
@@ -27,6 +31,7 @@
   var GITHUB_OWNER = String(config.GITHUB_OWNER || "Kadenj1989").trim();
   var GITHUB_REPO = String(config.GITHUB_REPO || "NC-building-and-remodeling-").trim();
   var GITHUB_BRANCH = String(config.GITHUB_BRANCH || "main").trim();
+  var CONTENT_REF = GITHUB_BRANCH;
   var POSTS_PATH = "content/posts";
   var SITE_NAME = "North Carolina Building & Remodeling";
   var ORG_NAME = "North Carolina Building and Remodeling, LLC";
@@ -59,6 +64,13 @@
     return String(value || "").toLowerCase().trim().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   }
 
+  /* Pages CMS quotes a slug that has a trailing space ("Testing ").
+     unquote() leaves that space, and the article page trims the URL,
+     so the card link and the lookup no longer match. */
+  function cleanSlug(value) {
+    return String(value == null ? "" : value).trim();
+  }
+
   function pick(obj, path) {
     return path.split(".").reduce(function (o, k) { return o && o[k]; }, obj);
   }
@@ -74,12 +86,42 @@
     return Promise.resolve(merge(base, { posts: [], pagesCms: true, blogState: "loading" }));
   }
 
-  /* Pages CMS posts live in the public GitHub repo. No token. */
+  /* Pages CMS posts live in the public GitHub repo. No token.
+     CONTENT_REF starts as the branch name. Before posts load it becomes
+     the latest commit SHA, so a save is not hidden by the branch CDN cache. */
+  function isCommitSha(value) {
+    return /^[0-9a-f]{40}$/i.test(String(value || ""));
+  }
+
+  function githubRefUrl() {
+    return "https://api.github.com/repos/" +
+      encodeURIComponent(GITHUB_OWNER) + "/" + encodeURIComponent(GITHUB_REPO) +
+      "/git/ref/heads/" + GITHUB_BRANCH.split("/").map(encodeURIComponent).join("/");
+  }
+
   function githubApi(path) {
     return "https://api.github.com/repos/" +
       encodeURIComponent(GITHUB_OWNER) + "/" + encodeURIComponent(GITHUB_REPO) +
       "/contents/" + path.split("/").map(encodeURIComponent).join("/") +
-      "?ref=" + encodeURIComponent(GITHUB_BRANCH);
+      "?ref=" + encodeURIComponent(CONTENT_REF);
+  }
+
+  /* Same-day posts share one frontmatter date. Commit time is the tiebreaker
+     so the post just saved in Pages CMS is listed first. */
+  function githubCommitsUrl() {
+    return "https://api.github.com/repos/" +
+      encodeURIComponent(GITHUB_OWNER) + "/" + encodeURIComponent(GITHUB_REPO) +
+      "/commits?per_page=100&sha=" + encodeURIComponent(GITHUB_BRANCH) +
+      "&path=" + POSTS_PATH.split("/").map(encodeURIComponent).join("/");
+  }
+
+  function resolveContentRef() {
+    return fetchJson(githubRefUrl()).then(function (ref) {
+      var sha = ref && ref.object && ref.object.sha;
+      if (isCommitSha(sha)) CONTENT_REF = sha;
+    }, function () {
+      /* Keep the branch name. Posts still load the old way. */
+    });
   }
 
   function fetchWithTimeout(url, options) {
@@ -119,6 +161,9 @@
   }
 
   function fileText(item) {
+    /* download_url points at the branch raw URL, which stays cached.
+       With a commit SHA, read that file at the commit instead. */
+    if (isCommitSha(CONTENT_REF) && item && item.path) return fetchText(githubFileUrl(item.path));
     if (item.download_url) return fetchText(item.download_url);
     return fetchJson(item.url).then(function (file) {
       if (!file || !file.content) throw new Error("Empty post");
@@ -173,14 +218,17 @@
       .replace(/\s+/g, " ")
       .trim();
     var excerpt = data.excerpt || (plain.length > 190 ? plain.slice(0, 187).trim() + "…" : plain);
+    var featured = data.featured_image || data.image || data.cover || "";
+    var inlineCover = featured ? null : firstMarkdownImage(body);
     return normalizePost({
       title: data.title || fallbackSlug,
-      slug: data.slug || fallbackSlug,
+      slug: cleanSlug(data.slug) || fallbackSlug,
+      fileSlug: fallbackSlug,
       label: data.label || data.category || "",
       category: data.category || data.label || "",
       date: date,
-      image: data.featured_image || data.image || data.cover || "",
-      imageAlt: data.featured_image_alt || data.imageAlt || data.title || "",
+      image: featured || (inlineCover ? inlineCover.src : ""),
+      imageAlt: data.featured_image_alt || data.imageAlt || (inlineCover && inlineCover.alt) || data.title || "",
       youtubeUrl: data.youtube || data.youtubeUrl || "",
       video: data.video || "",
       attachment: data.attachment || "",
@@ -191,8 +239,30 @@
     });
   }
 
+  function commitTimes(commits) {
+    var times = {};
+    (Array.isArray(commits) ? commits : []).forEach(function (commit) {
+      var meta = commit && commit.commit;
+      var message = meta && meta.message || "";
+      var stamp = meta && ((meta.committer && meta.committer.date) || (meta.author && meta.author.date));
+      var when = Date.parse(stamp || "") || 0;
+      var match = message.match(/content\/posts\/([^\s)]+)/i);
+      if (!match || !when || times[match[1]]) return;
+      times[match[1]] = when;
+    });
+    return times;
+  }
+
+  function fetchCommitTimes() {
+    return fetchJson(githubCommitsUrl()).then(commitTimes, function () { return {}; });
+  }
+
   function loadPosts() {
-    return fetchJson(githubApi(POSTS_PATH)).then(function (items) {
+    return resolveContentRef().then(function () {
+      return Promise.all([fetchJson(githubApi(POSTS_PATH)), fetchCommitTimes()]);
+    }).then(function (parts) {
+      var items = parts[0];
+      var updated = parts[1] || {};
       if (items && !Array.isArray(items) && items.type === "file") items = [items];
       if (!items || !Array.isArray(items)) return [];
       var files = items.filter(function (item) {
@@ -203,7 +273,9 @@
       return Promise.all(files.map(function (item) {
         var fallback = String(item.name || "").replace(/\.md$/i, "");
         return fileText(item).then(function (text) {
-          return parseMarkdownFile(text, fallback);
+          var post = parseMarkdownFile(text, fallback);
+          if (post) post.updated = updated[item.name] || 0;
+          return post;
         }, function () { return null; });
       }));
     }).then(function (posts) {
@@ -302,16 +374,19 @@
     if (key) return key.trim();
     var m = window.location.pathname.match(/\/blog\/([^\/]+)\/?$/);
     if (!m) return "";
-    try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
+    try { return cleanSlug(decodeURIComponent(m[1])); } catch (e) { return cleanSlug(m[1]); }
   }
 
   function normalizePost(p) {
-    var key = p.slug || slug(p.title);
+    var fileSlug = cleanSlug(p.fileSlug);
+    var key = cleanSlug(p.slug) || fileSlug || slug(p.title);
     var cat = blogCategory(p.category || p.label);
     return {
       slug: key,
+      fileSlug: fileSlug,
       url: postUrl(key),
       title: p.title || "",
+      updated: p.updated || 0,
       label: cat.label,
       category: cat.id,
       excerpt: p.excerpt || "",
@@ -331,8 +406,19 @@
     return Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date + "T12:00:00" : p.date) || 0;
   }
 
+  /* Prefer the frontmatter date. A missing or unparsed date uses the file's
+     GitHub commit time so a just-saved post does not sink under older ones.
+     The commit time also breaks ties when several posts share one date. */
+  function rankTime(p) {
+    return time(p) || p.updated || 0;
+  }
+
   function newestFirst(list) {
-    return (list || []).slice().sort(function (a, b) { return time(b) - time(a); });
+    return (list || []).slice().sort(function (a, b) {
+      var byPublished = rankTime(b) - rankTime(a);
+      if (byPublished) return byPublished;
+      return (b.updated || 0) - (a.updated || 0);
+    });
   }
 
   function arrangePosts(list) {
@@ -341,21 +427,33 @@
   }
 
   function githubFileUrl(path) {
-    var parts = String(path || "").replace(/^\/+/, "").split("/").filter(Boolean).map(encodeURIComponent);
+    var parts = String(path || "").replace(/[?#].*$/, "").replace(/^\/+/, "").split("/").filter(Boolean).map(function (segment) {
+      var decoded = segment;
+      try { decoded = decodeURIComponent(segment); } catch (e) { decoded = segment; }
+      return encodeURIComponent(decoded);
+    });
     return "https://raw.githubusercontent.com/" +
       encodeURIComponent(GITHUB_OWNER) + "/" +
       encodeURIComponent(GITHUB_REPO) + "/" +
-      encodeURIComponent(GITHUB_BRANCH) + "/" +
+      encodeURIComponent(CONTENT_REF) + "/" +
       parts.join("/");
   }
 
   /* Pages CMS stores uploads as /content/uploads/....
-     The post text is loaded from GitHub, so load those files from the same
-     public repository. A plain site path 404s until that file is in the
-     folder serving this page. */
+     The same commit used for the post text is placed in the file URL.
+     A new save changes that commit, so the browser cannot keep the previous
+     photo, video, or attachment. An empty path renders nothing. */
   function imageSrc(src) {
     src = String(src || "").trim();
     if (!src) return "";
+    var raw = src.match(/^(https?:)?\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/[^/]+\/([^?#]*)/i);
+    if (raw) {
+      var owner = raw[2];
+      var repo = raw[3];
+      try { owner = decodeURIComponent(owner); } catch (e1) {}
+      try { repo = decodeURIComponent(repo); } catch (e2) {}
+      if (owner === GITHUB_OWNER && repo === GITHUB_REPO) return githubFileUrl(raw[4]);
+    }
     if (/^(https?:)?\/\//i.test(src)) return src;
     var path = src.charAt(0) === "/" ? src.slice(1) : src;
     if (/^content\/uploads\//i.test(path)) return githubFileUrl(path);
@@ -390,10 +488,10 @@
     return '<p class="post-meta"' + (style ? ' style="' + style + '"' : "") + ">" + metaSpans(p) + "</p>";
   }
 
-  function postCard(p, compact) {
+  function postCard(p, compact, actionLabel) {
     var url = esc(p.url);
     var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
-    var action = yt || p.category === "testimonials" ? "Watch" : "Read more";
+    var action = actionLabel || ((yt || p.category === "testimonials") ? "Watch" : "Read more");
     var media = yt
       ? videoFigure(yt, p.title, imageSrc(p.image), "card")
       : postMedia("post-media", p, 900, 600);
@@ -495,6 +593,78 @@
     return out + esc(s.slice(last));
   }
 
+  function htmlAttr(tag, name) {
+    var m = String(tag || "").match(new RegExp("\\b" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s\"'=<>`]+))", "i"));
+    if (!m) return "";
+    return (m[1] != null ? m[1] : (m[2] != null ? m[2] : m[3] || ""))
+      .replace(/&amp;/g, "&").replace(/&quot;/g, "\"").replace(/&#39;/g, "'");
+  }
+
+  function imageTarget(raw) {
+    var t = String(raw || "").trim();
+    var title = "";
+    var quoted = t.match(/^(.*?)(?:\s+"([^"]*)"|\s+'([^']*)')\s*$/);
+    if (quoted && quoted[1].trim()) {
+      t = quoted[1].trim();
+      title = quoted[2] || quoted[3] || "";
+    }
+    if (t.charAt(0) === "<" && t.charAt(t.length - 1) === ">") t = t.slice(1, -1).trim();
+    return { url: t, title: title };
+  }
+
+  /* Markdown images and <img> tags, in the order they were placed in the post. */
+  function findPostImages(text) {
+    var s = String(text || "");
+    var found = [];
+    var re = /!\[([^\]]*)\]\(([^)]+)\)|<img\b([^>]*?)\/?>/gi;
+    var m;
+    while ((m = re.exec(s))) {
+      if (m[3] != null) {
+        found.push({
+          index: m.index,
+          length: m[0].length,
+          alt: htmlAttr(m[3], "alt"),
+          src: htmlAttr(m[3], "src"),
+          title: htmlAttr(m[3], "title")
+        });
+      } else {
+        var target = imageTarget(m[2]);
+        found.push({
+          index: m.index,
+          length: m[0].length,
+          alt: m[1],
+          src: target.url,
+          title: target.title
+        });
+      }
+    }
+    return found;
+  }
+
+  function imageFigure(src, alt, title) {
+    src = safeHref(src);
+    if (!src) return "";
+    var caption = String(title || "").trim();
+    return '<figure class="wide"><img data-fit="inline" crossorigin="anonymous" src="' + esc(imageSrc(src)) + '" alt="' + esc(alt || "") +
+      '" loading="lazy" decoding="async">' +
+      (caption ? "<figcaption>" + esc(caption) + "</figcaption>" : "") +
+      "</figure>";
+  }
+
+  function firstMarkdownImage(markdown) {
+    var images = findPostImages(markdown);
+    var i, src;
+    for (i = 0; i < images.length; i++) {
+      src = safeHref(images[i].src);
+      if (src) return { alt: images[i].alt, src: src };
+    }
+    return null;
+  }
+
+  function markdownHasImages(markdown) {
+    return !!firstMarkdownImage(markdown);
+  }
+
   function markdownToHtml(markdown) {
     var lines = String(markdown || "").replace(/\r\n?/g, "\n").split("\n");
     var out = [];
@@ -509,22 +679,32 @@
       if (list) out.push("</" + list + ">");
       list = "";
     }
+    function placeImages(text) {
+      var images = findPostImages(text);
+      if (!images.length) return false;
+      var cursor = 0;
+      images.forEach(function (image) {
+        var before = text.slice(cursor, image.index).replace(/<\/?p>/gi, " ").trim();
+        if (before) out.push("<p>" + inlineMarkdown(before) + "</p>");
+        var figure = imageFigure(image.src, image.alt, image.title);
+        if (figure) out.push(figure);
+        cursor = image.index + image.length;
+      });
+      var after = text.slice(cursor).replace(/<\/?p>/gi, " ").trim();
+      if (after) out.push("<p>" + inlineMarkdown(after) + "</p>");
+      return true;
+    }
     lines.forEach(function (line) {
-      var t = line.trim();
+      var t = line.trim().replace(/^<p>|<\/p>$/gi, "").trim();
       if (!t) {
         closeParagraph();
         closeList();
         return;
       }
-      var image = t.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/);
-      if (image) {
+      if (findPostImages(t).length) {
         closeParagraph();
         closeList();
-        var src = safeHref(image[2]);
-        if (src) {
-          out.push('<figure class="wide"><img data-fit="inline" crossorigin="anonymous" src="' + esc(imageSrc(src)) + '" alt="' + esc(image[1]) +
-            '" loading="lazy" decoding="async"></figure>');
-        }
+        placeImages(t);
         return;
       }
       if (/^https?:\/\/\S+$/.test(t) && youtubeId(t)) {
@@ -669,7 +849,7 @@
 
   function articleHtml(p, author) {
     var date = postDate(p);
-    var hero = postImg(p, 1600, 900, p.imageAlt, true, "hero");
+    var hero = markdownHasImages(p.markdown) ? "" : postImg(p, 1600, 900, p.imageAlt, true, "hero");
     var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
     var attachment = safeHref(p.attachment);
     var player = yt ? videoFigure(yt, p.title, imageSrc(p.image)) : "";
@@ -693,8 +873,19 @@
 
   function findPost(c, key) {
     var list = c.posts || [];
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].slug === key) return list[i];
+    var want = cleanSlug(key);
+    if (!want) return null;
+    var i, p, file;
+    for (i = 0; i < list.length; i++) {
+      if (list[i].slug === want) return list[i];
+    }
+    var lower = want.toLowerCase();
+    var normalized = slug(want);
+    for (i = 0; i < list.length; i++) {
+      p = list[i];
+      file = cleanSlug(p.fileSlug);
+      if (String(p.slug).toLowerCase() === lower || file === want || file.toLowerCase() === lower) return p;
+      if (normalized && (slug(p.slug) === normalized || slug(file) === normalized)) return p;
     }
     return null;
   }
@@ -717,9 +908,17 @@
     homeBlog: function (c) {
       var posts = readyPosts(c);
       if (!posts) return null;
-      var featured = arrangePosts(posts).featured;
-      if (!featured) return null;
-      return '<div class="blog-feature reveal is-visible">' + blogFeature(featured) + "</div>";
+      var all = arrangePosts(posts).all;
+      if (!all.length) return null;
+      if (all.length === 1) {
+        return '<div class="blog-feature reveal is-visible">' + blogFeature(all[0]) + "</div>";
+      }
+      var shown = all.slice(0, 3);
+      return '<div class="post-grid home-posts' + (shown.length === 2 ? " is-two" : "") + '">' +
+        shown.map(function (p) {
+          var video = youtubeId(p.youtubeUrl) || youtubeId(p.video) || p.category === "testimonials";
+          return postCard(p, false, video ? "Watch the video" : "Read the story");
+        }).join("") + "</div>";
     },
     resourcesBlog: function (c) {
       var posts = readyPosts(c);

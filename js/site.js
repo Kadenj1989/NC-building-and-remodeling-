@@ -261,11 +261,11 @@
     if (label) label.textContent = box.getAttribute("data-title") || "Watch the video";
     btn.addEventListener("click", function () {
       var frame = doc.createElement("iframe");
-      frame.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) + "?autoplay=1&rel=0";
       frame.title = box.getAttribute("data-title") || "Video";
-      frame.allow = "autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      frame.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
+      frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
       frame.allowFullscreen = true;
+      frame.src = "https://www.youtube.com/embed/" + encodeURIComponent(id) + "?autoplay=1&rel=0";
       box.appendChild(frame);
       btn.remove();
     });
