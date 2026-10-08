@@ -8,7 +8,9 @@
   Photos added inside the post are saved in the body, in the order and
   position the owner chose. The site draws each one in that same spot.
   category is one of: jobs, testimonials, general.
-  youtube is a YouTube link. The video plays on the blog and is not stored in the repo.
+  youtube is one YouTube link, or several in the order they were added.
+  Each link plays on the article. Cards and the home page use the first.
+  Videos are not stored in the repo.
   Images and files use the public path /content/uploads/.
   Posts and uploads are read from the latest commit on the public GitHub
   repository, not from the cached branch URL. GitHub's raw CDN keeps a
@@ -180,6 +182,71 @@
     return v.replace(/\\"/g, '"').replace(/\\'/g, "'");
   }
 
+  function youtubeList(value) {
+    var source = Array.isArray(value) ? value : (value == null || value === "" ? [] : [value]);
+    var out = [];
+    var i, link;
+    for (i = 0; i < source.length; i++) {
+      link = String(source[i] == null ? "" : source[i]).trim();
+      if (link) out.push(link);
+    }
+    return out;
+  }
+
+  function readFlowList(raw) {
+    var inner = String(raw || "").trim().slice(1, -1);
+    var items = [];
+    var current = "";
+    var quote = "";
+    var i, ch;
+    for (i = 0; i < inner.length; i++) {
+      ch = inner.charAt(i);
+      if (quote) {
+        if (ch === "\\" && i + 1 < inner.length) {
+          current += inner.charAt(++i);
+          continue;
+        }
+        if (ch === quote) quote = "";
+        else current += ch;
+        continue;
+      }
+      if (ch === "\"" || ch === "'") {
+        quote = ch;
+        continue;
+      }
+      if (ch === ",") {
+        if (current.trim()) items.push(unquote(current));
+        current = "";
+        continue;
+      }
+      current += ch;
+    }
+    if (current.trim()) items.push(unquote(current));
+    return items;
+  }
+
+  /* A saved post may still have one youtube string. list: true writes a YAML list. */
+  function readYoutubeField(raw, lines, index) {
+    var trimmed = String(raw || "").trim();
+    if (trimmed === "[]" || trimmed === "~" || trimmed === "null" || trimmed === "''" || trimmed === "\"\"") {
+      return { value: [], skip: 0 };
+    }
+    if (trimmed.charAt(0) === "[" && trimmed.charAt(trimmed.length - 1) === "]") {
+      return { value: readFlowList(trimmed), skip: 0 };
+    }
+    if (trimmed) return { value: unquote(trimmed), skip: 0 };
+    var items = [];
+    var skip = 0;
+    var j, item;
+    for (j = index + 1; j < lines.length; j++) {
+      item = lines[j].match(/^\s*-\s*(.*)$/);
+      if (!item) break;
+      if (item[1].trim()) items.push(unquote(item[1]));
+      skip++;
+    }
+    return { value: items, skip: skip };
+  }
+
   function flag(value, yes) {
     return (yes ? /^(true|yes|1)$/i : /^(false|no|0)$/i).test(String(value || "").trim());
   }
@@ -201,10 +268,18 @@
     if (text.slice(0, 4) === "---\n") {
       var close = text.indexOf("\n---", 4);
       if (close >= 0) {
-        text.slice(4, close).split("\n").forEach(function (line) {
-          var m = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-          if (m && m[2].trim() !== "|" && m[2].trim() !== ">") data[m[1]] = unquote(m[2]);
-        });
+        var fmLines = text.slice(4, close).split("\n");
+        for (var fi = 0; fi < fmLines.length; fi++) {
+          var m = fmLines[fi].match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+          if (!m || m[2].trim() === "|" || m[2].trim() === ">") continue;
+          if (m[1] === "youtube" || m[1] === "youtubeUrl") {
+            var ytField = readYoutubeField(m[2], fmLines, fi);
+            data[m[1]] = ytField.value;
+            fi += ytField.skip;
+            continue;
+          }
+          data[m[1]] = unquote(m[2]);
+        }
         body = text.slice(close + 4).replace(/^\n+/, "");
       }
     }
@@ -220,6 +295,8 @@
     var excerpt = data.excerpt || (plain.length > 190 ? plain.slice(0, 187).trim() + "…" : plain);
     var featured = data.featured_image || data.image || data.cover || "";
     var inlineCover = featured ? null : firstMarkdownImage(body);
+    var youtubeLinks = youtubeList(data.youtube);
+    if (!youtubeLinks.length) youtubeLinks = youtubeList(data.youtubeUrl);
     return normalizePost({
       title: data.title || fallbackSlug,
       slug: cleanSlug(data.slug) || fallbackSlug,
@@ -229,7 +306,8 @@
       date: date,
       image: featured || (inlineCover ? inlineCover.src : ""),
       imageAlt: data.featured_image_alt || data.imageAlt || (inlineCover && inlineCover.alt) || data.title || "",
-      youtubeUrl: data.youtube || data.youtubeUrl || "",
+      youtubeUrl: youtubeLinks[0] || "",
+      youtubeUrls: youtubeLinks,
       video: data.video || "",
       attachment: data.attachment || "",
       excerpt: excerpt,
@@ -393,7 +471,8 @@
       date: p.date || "",
       image: p.image || "",
       imageAlt: p.imageAlt || p.title || "",
-      youtubeUrl: p.youtubeUrl || "",
+      youtubeUrl: youtubeList(p.youtubeUrls)[0] || p.youtubeUrl || "",
+      youtubeUrls: youtubeList(p.youtubeUrls).length ? youtubeList(p.youtubeUrls) : youtubeList(p.youtubeUrl),
       video: p.video || "",
       attachment: p.attachment || "",
       markdown: p.markdown || "",
@@ -490,7 +569,7 @@
 
   function postCard(p, compact, actionLabel) {
     var url = esc(p.url);
-    var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
+    var yt = youtubeIds(p)[0] || "";
     var action = actionLabel || ((yt || p.category === "testimonials") ? "Watch" : "Read more");
     var media = yt
       ? videoFigure(yt, p.title, imageSrc(p.image), "card")
@@ -515,7 +594,7 @@
 
   function blogFeature(p) {
     var url = esc(p.url);
-    var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
+    var yt = youtubeIds(p)[0] || "";
     var action = yt || p.category === "testimonials" ? "Watch the video" : "Read the story";
     var media = yt
       ? videoFigure(yt, p.title, imageSrc(p.image), "card")
@@ -546,6 +625,21 @@
     var m = String(url || "").trim().match(
       /(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
     return m ? m[1] : "";
+  }
+
+  function youtubeIds(p) {
+    var links = youtubeList(p && p.youtubeUrls);
+    if (!links.length) links = youtubeList(p && p.youtubeUrl);
+    var ids = [];
+    links.forEach(function (url) {
+      var id = youtubeId(url);
+      if (id) ids.push(id);
+    });
+    if (!ids.length) {
+      var fallback = youtubeId(p && p.video);
+      if (fallback) ids.push(fallback);
+    }
+    return ids;
   }
 
   function videoFigure(id, title, poster, layout) {
@@ -850,9 +944,10 @@
   function articleHtml(p, author) {
     var date = postDate(p);
     var hero = markdownHasImages(p.markdown) ? "" : postImg(p, 1600, 900, p.imageAlt, true, "hero");
-    var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
     var attachment = safeHref(p.attachment);
-    var player = yt ? videoFigure(yt, p.title, imageSrc(p.image)) : "";
+    var player = youtubeIds(p).map(function (id, index) {
+      return videoFigure(id, p.title, index ? "" : imageSrc(p.image));
+    }).join("");
     return '<header class="article-head tone-light"><div class="wrap">' +
       '<ol class="crumbs on-light"><li><a href="index.html">Home</a></li><li><a href="jobsite.html">Resources</a></li><li>' + esc(p.title) + "</li></ol>" +
       (p.label ? '<p class="eyebrow">' + esc(p.label) + "</p>" : "") +
@@ -916,7 +1011,7 @@
       var shown = all.slice(0, 3);
       return '<div class="post-grid home-posts' + (shown.length === 2 ? " is-two" : "") + '">' +
         shown.map(function (p) {
-          var video = youtubeId(p.youtubeUrl) || youtubeId(p.video) || p.category === "testimonials";
+          var video = youtubeIds(p)[0] || p.category === "testimonials";
           return postCard(p, false, video ? "Watch the video" : "Read the story");
         }).join("") + "</div>";
     },

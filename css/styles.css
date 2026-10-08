@@ -2604,6 +2604,10 @@ a.chip {
   margin: 8px auto 0;
 }
 
+.article-video .video + .video {
+  margin-top: 28px;
+}
+
 .post .video,
 .blog-feature .video {
   margin: 0;

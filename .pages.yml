@@ -56,10 +56,11 @@ content:
           rename: safe
 
       - name: youtube
-        label: YouTube video
+        label: YouTube videos
         type: string
+        list: true
         required: false
-        description: Paste a YouTube link, such as https://www.youtube.com/watch?v=... or https://youtu.be/... The video plays on the blog. Do not upload the video file.
+        description: Paste a YouTube link (watch, youtu.be, Shorts, or embed). Add another link for each extra video. Videos play on the post in the order you add them. Do not upload the video file.
 
       - name: attachment
         label: File / Document
