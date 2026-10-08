@@ -3027,7 +3027,7 @@ a.chip {
 
 .article-cta {
   width: min(1000px, 100% - 48px);
-  margin: clamp(48px, 7vw, 72px) auto 0;
+  margin: clamp(48px, 7vw, 72px) auto clamp(72px, 9vw, 112px);
 }
 
 /* Contact page ----------------------------------------------------------- */
