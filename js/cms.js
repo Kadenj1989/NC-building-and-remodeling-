@@ -4,9 +4,12 @@
     - Blog posts: Pages CMS Markdown files in content/posts
 
   Pages CMS (.pages.yml) saves each post as content/posts/<slug>.md with
-  title, slug, date, featured_image, video, attachment, and body.
+  title, slug, date, category, featured_image, youtube, attachment, and body.
+  category is one of: jobs, testimonials, general.
+  youtube is a YouTube link. The video plays on the blog and is not stored in the repo.
   Images and files use the public path /content/uploads/.
-  This file reads those Markdown files from the public GitHub repository.
+  This file reads those Markdown files, and the uploads they point at,
+  from the public GitHub repository.
   Blog posts open at article.html?post=<slug>.
 
   Markup hooks:
@@ -174,6 +177,7 @@
       title: data.title || fallbackSlug,
       slug: data.slug || fallbackSlug,
       label: data.label || data.category || "",
+      category: data.category || data.label || "",
       date: date,
       image: data.featured_image || data.image || data.cover || "",
       imageAlt: data.featured_image_alt || data.imageAlt || data.title || "",
@@ -271,6 +275,24 @@
 
   /* Blog ----------------------------------------------------------------- */
 
+  var BLOG_CATEGORIES = [
+    { id: "jobs", label: "Jobs/Projects" },
+    { id: "testimonials", label: "Video Testimonials" },
+    { id: "general", label: "General Information" }
+  ];
+
+  function blogCategory(value) {
+    var raw = String(value || "").trim().toLowerCase().replace(/&/g, "and").replace(/[_/]+/g, " ").replace(/\s+/g, " ");
+    var i;
+    for (i = 0; i < BLOG_CATEGORIES.length; i++) {
+      if (raw === BLOG_CATEGORIES[i].id || raw === BLOG_CATEGORIES[i].label.toLowerCase()) return BLOG_CATEGORIES[i];
+    }
+    if (raw === "jobs projects" || raw === "job projects" || raw === "jobs and projects") return BLOG_CATEGORIES[0];
+    if (raw === "video testimonial" || raw === "testimonial" || raw === "testimonials") return BLOG_CATEGORIES[1];
+    if (raw === "general info" || raw === "general information") return BLOG_CATEGORIES[2];
+    return BLOG_CATEGORIES[2];
+  }
+
   function postUrl(key) {
     return "article.html?post=" + encodeURIComponent(key);
   }
@@ -285,11 +307,13 @@
 
   function normalizePost(p) {
     var key = p.slug || slug(p.title);
+    var cat = blogCategory(p.category || p.label);
     return {
       slug: key,
       url: postUrl(key),
       title: p.title || "",
-      label: String(p.label || "").trim(),
+      label: cat.label,
+      category: cat.id,
       excerpt: p.excerpt || "",
       date: p.date || "",
       image: p.image || "",
@@ -316,24 +340,39 @@
     return { featured: sorted[0] || null, rest: sorted.slice(1), all: sorted };
   }
 
-  /* Pages CMS stores uploads as /content/uploads/... . Keep that site path. */
+  function githubFileUrl(path) {
+    var parts = String(path || "").replace(/^\/+/, "").split("/").filter(Boolean).map(encodeURIComponent);
+    return "https://raw.githubusercontent.com/" +
+      encodeURIComponent(GITHUB_OWNER) + "/" +
+      encodeURIComponent(GITHUB_REPO) + "/" +
+      encodeURIComponent(GITHUB_BRANCH) + "/" +
+      parts.join("/");
+  }
+
+  /* Pages CMS stores uploads as /content/uploads/....
+     The post text is loaded from GitHub, so load those files from the same
+     public repository. A plain site path 404s until that file is in the
+     folder serving this page. */
   function imageSrc(src) {
     src = String(src || "").trim();
     if (!src) return "";
     if (/^(https?:)?\/\//i.test(src)) return src;
-    if (src.charAt(0) === "/") src = src.slice(1);
-    return src;
+    var path = src.charAt(0) === "/" ? src.slice(1) : src;
+    if (/^content\/uploads\//i.test(path)) return githubFileUrl(path);
+    return path;
   }
 
-  function postImg(p, w, h, alt, eager) {
+  function postImg(p, w, h, alt, eager, slot) {
     var src = imageSrc(p.image);
     if (!src) return "";
     return '<img src="' + esc(src) + '" alt="' + esc(alt || "") + '" width="' + w + '" height="' + h + '"' +
+      ' data-fit="' + esc(slot || "card") + '" crossorigin="anonymous"' +
       (eager ? ' fetchpriority="high"' : ' loading="lazy" decoding="async"') + ">";
   }
 
   function postMedia(cls, p, w, h) {
-    var pic = postImg(p, w, h, p.imageAlt || "");
+    var slot = String(cls).indexOf("blog-feature") >= 0 ? "feature" : "card";
+    var pic = postImg(p, w, h, p.imageAlt || "", false, slot);
     return '<a class="' + cls + (pic ? "" : " media-empty") + '" href="' + esc(p.url) + '" tabindex="-1" aria-hidden="true">' + pic + "</a>";
   }
 
@@ -353,12 +392,17 @@
 
   function postCard(p, compact) {
     var url = esc(p.url);
-    return '<article class="post">' +
-      postMedia("post-media", p, 900, 600) +
+    var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
+    var action = yt || p.category === "testimonials" ? "Watch" : "Read more";
+    var media = yt
+      ? videoFigure(yt, p.title, imageSrc(p.image), "card")
+      : postMedia("post-media", p, 900, 600);
+    return '<article class="post" data-cat="' + esc(p.category || "general") + '">' +
+      media +
       postMeta(p) +
       '<h3><a href="' + url + '">' + esc(p.title) + "</a></h3>" +
       "<p>" + esc(p.excerpt) + "</p>" +
-      (compact ? "" : '<a class="link-arrow" href="' + url + '">Read more<span class="sr-only">: ' + esc(p.title) + "</span></a>") +
+      (compact ? "" : '<a class="link-arrow" href="' + url + '">' + action + '<span class="sr-only">: ' + esc(p.title) + "</span></a>") +
       "</article>";
   }
 
@@ -373,11 +417,16 @@
 
   function blogFeature(p) {
     var url = esc(p.url);
-    return postMedia("blog-feature-media", p, 1280, 640) +
+    var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
+    var action = yt || p.category === "testimonials" ? "Watch the video" : "Read the story";
+    var media = yt
+      ? videoFigure(yt, p.title, imageSrc(p.image), "card")
+      : postMedia("blog-feature-media", p, 1280, 640);
+    return media +
       '<div class="blog-feature-body">' + postMeta(p) +
       '<h3><a href="' + url + '">' + esc(p.title) + "</a></h3>" +
       "<p>" + esc(p.excerpt) + "</p>" +
-      '<a class="link-arrow" href="' + url + '">Read the story</a></div>';
+      '<a class="link-arrow" href="' + url + '">' + action + "</a></div>";
   }
 
   function blogListItem(p) {
@@ -401,16 +450,18 @@
     return m ? m[1] : "";
   }
 
-  function videoFigure(id, title, poster) {
+  function videoFigure(id, title, poster, layout) {
     if (!id) return "";
     var t = title || "Watch the video";
     var src = poster || "https://i.ytimg.com/vi/" + encodeURIComponent(id) + "/hqdefault.jpg";
-    return '<figure class="video wide" data-video data-youtube-id="' + esc(id) + '" data-title="' + esc(t) + '">' +
-      '<img src="' + esc(src) + '" alt="" width="1024" height="576" loading="lazy" decoding="async">' +
+    var cls = layout === "card" ? "video" : "video wide";
+    return '<figure class="' + cls + '" data-video data-youtube-id="' + esc(id) + '" data-title="' + esc(t) + '">' +
+      '<img data-fit="feature" crossorigin="anonymous" src="' + esc(src) + '" alt="" width="1024" height="576" loading="lazy" decoding="async">' +
       '<button class="video-play" type="button" aria-label="Play video: ' + esc(t) + '">' +
       '<span class="video-play-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg></span>' +
       "</button>" +
-      '<figcaption class="video-label">' + esc(t) + "</figcaption></figure>";
+      (layout === "card" ? "" : '<figcaption class="video-label">' + esc(t) + "</figcaption>") +
+      "</figure>";
   }
 
   function fileVideo(src, title) {
@@ -471,7 +522,7 @@
         closeList();
         var src = safeHref(image[2]);
         if (src) {
-          out.push('<figure class="wide"><img src="' + esc(imageSrc(src)) + '" alt="' + esc(image[1]) +
+          out.push('<figure class="wide"><img data-fit="inline" crossorigin="anonymous" src="' + esc(imageSrc(src)) + '" alt="' + esc(image[1]) +
             '" loading="lazy" decoding="async"></figure>');
         }
         return;
@@ -618,9 +669,10 @@
 
   function articleHtml(p, author) {
     var date = postDate(p);
-    var hero = postImg(p, 1600, 686, p.imageAlt, true);
+    var hero = postImg(p, 1600, 900, p.imageAlt, true, "hero");
     var yt = youtubeId(p.youtubeUrl) || youtubeId(p.video);
     var attachment = safeHref(p.attachment);
+    var player = yt ? videoFigure(yt, p.title, imageSrc(p.image)) : "";
     return '<header class="article-head tone-light"><div class="wrap">' +
       '<ol class="crumbs on-light"><li><a href="index.html">Home</a></li><li><a href="jobsite.html">Resources</a></li><li>' + esc(p.title) + "</li></ol>" +
       (p.label ? '<p class="eyebrow">' + esc(p.label) + "</p>" : "") +
@@ -628,9 +680,9 @@
       '<p class="article-meta"><span>By <strong>' + esc(author) + "</strong></span>" +
       (date ? '<span><time datetime="' + esc(p.date) + '">' + date + "</time></span>" : "") +
       "</p></div></header>" +
-      (hero ? '<figure class="article-hero">' + hero + "</figure>" : "") +
+      (player ? '<div class="wrap article-video">' + player + "</div>" : (hero ? '<figure class="article-hero">' + hero + "</figure>" : "")) +
       '<div class="prose">' + markdownToHtml(p.markdown) +
-      (yt ? videoFigure(yt, p.title, "") : fileVideo(p.video, p.title)) +
+      (player ? "" : fileVideo(p.video, p.title)) +
       (attachment ? '<p><a class="btn btn-outline" href="' + esc(imageSrc(attachment)) + '" target="_blank" rel="noopener">View attached file</a></p>' : "") +
       "</div>" +
       '<aside class="article-cta"><div class="cta-panel"><div>' +
@@ -671,12 +723,8 @@
     },
     resourcesBlog: function (c) {
       var posts = readyPosts(c);
-      if (!posts) return null;
-      var arranged = arrangePosts(posts);
-      if (!arranged.featured) return null;
-      var rest = arranged.rest.map(function (p) { return postCard(p); }).join("");
-      return '<div class="blog-feature reveal is-visible">' + blogFeature(arranged.featured) + "</div>" +
-        (rest ? '<div class="post-grid blog-rest">' + rest + "</div>" : "");
+      if (!posts || !posts.length) return null;
+      return '<div class="post-grid">' + arrangePosts(posts).all.map(function (p) { return postCard(p); }).join("") + "</div>";
     },
     homeFeatured: function (c) {
       var posts = readyPosts(c);
@@ -791,6 +839,67 @@
     });
 
     doc.dispatchEvent(new CustomEvent("cms:rendered", { detail: { postsOnly: !!postsOnly } }));
+    fitBlogImages();
+  }
+
+  /* Fit uploaded photos to the blog frame. Large files are reduced with
+     high-quality smoothing. Small files are left alone so they are not stretched. */
+  var FIT_BOX = {
+    hero: [920, 520],
+    feature: [960, 540],
+    card: [640, 427],
+    inline: [720, 480]
+  };
+
+  function fitBlogImages() {
+    doc.querySelectorAll("img[data-fit]").forEach(fitBlogImage);
+  }
+
+  function fitBlogImage(img) {
+    if (img.getAttribute("data-fit-done")) return;
+    var run = function () {
+      if (img.getAttribute("data-fit-done")) return;
+      var nw = img.naturalWidth;
+      var nh = img.naturalHeight;
+      if (!nw || !nh) return;
+      if (/\.gif($|\?)/i.test(img.currentSrc || img.src || "")) {
+        img.setAttribute("data-fit-done", "gif");
+        return;
+      }
+      var box = FIT_BOX[img.getAttribute("data-fit")] || FIT_BOX.card;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var scale = Math.min((box[0] * dpr) / nw, (box[1] * dpr) / nh, 1);
+      if (nw < box[0] * 0.9 && nh < box[1] * 0.9) img.classList.add("is-small");
+      if (scale > 0.97) {
+        img.setAttribute("data-fit-done", "native");
+        return;
+      }
+      var w = Math.max(1, Math.round(nw * scale));
+      var h = Math.max(1, Math.round(nh * scale));
+      try {
+        var canvas = doc.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, w, h);
+        img.setAttribute("data-fit-done", "resampling");
+        var mime = /\.png($|\?)/i.test(img.currentSrc || "") ? "image/png" : "image/jpeg";
+        canvas.toBlob(function (blob) {
+          if (!blob) {
+            img.setAttribute("data-fit-done", "css");
+            return;
+          }
+          img.src = URL.createObjectURL(blob);
+          img.setAttribute("data-fit-done", "done");
+        }, mime, mime === "image/jpeg" ? 0.86 : undefined);
+      } catch (err) {
+        img.setAttribute("data-fit-done", "css");
+      }
+    };
+    if (img.complete && img.naturalWidth) run();
+    else img.addEventListener("load", run);
   }
 
   function addTags() {

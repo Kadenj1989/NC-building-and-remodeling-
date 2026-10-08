@@ -25,15 +25,32 @@ content:
         type: date
         required: true
 
+      - name: category
+        label: Category
+        type: select
+        required: true
+        description: Choose where this post appears on the Resources page.
+        options:
+          placeholder: Select a category
+          values:
+            - name: jobs
+              label: Jobs/Projects
+            - name: testimonials
+              label: Video Testimonials
+            - name: general
+              label: General Information
+
       - name: featured_image
         label: Featured Image
         type: image
         required: false
+        description: Any size photo is fine. The site fits it to the blog, so it is not too large, too small, or blurry.
 
-      - name: video
-        label: Video
-        type: file
+      - name: youtube
+        label: YouTube video
+        type: string
         required: false
+        description: Paste a YouTube link, such as https://www.youtube.com/watch?v=... or https://youtu.be/... The video plays on the blog. Do not upload the video file.
 
       - name: attachment
         label: File / Document

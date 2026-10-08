@@ -192,11 +192,12 @@
     el.textContent = new Date().getFullYear();
   });
 
-  /* Filters (projects, jobsite) ----------------------------------------- */
+  /* Filters (projects, resources) ---------------------------------------- */
   doc.querySelectorAll("[data-filters]").forEach(function (bar) {
     var list = doc.getElementById(bar.getAttribute("data-filters"));
     if (!list) return;
     var empty = doc.querySelector('[data-filter-empty="' + list.id + '"]');
+    var param = bar.getAttribute("data-filter-param");
     var applyFilter = function (filter) {
       var shown = 0;
       list.querySelectorAll("[data-cat]").forEach(function (item) {
@@ -207,21 +208,37 @@
       });
       if (empty) empty.hidden = shown > 0 || filter === "all";
     };
-    bar.addEventListener("click", function (e) {
-      var chip = e.target.closest("[data-filter]");
-      if (!chip) return;
+    var choose = function (filter, updateUrl) {
+      var match = null;
       bar.querySelectorAll("[data-filter]").forEach(function (c) {
-        var on = c === chip;
+        var on = c.getAttribute("data-filter") === filter;
+        if (on) match = c;
         c.classList.toggle("is-on", on);
         c.setAttribute("aria-pressed", on ? "true" : "false");
       });
-      applyFilter(chip.getAttribute("data-filter"));
+      if (!match) return;
+      applyFilter(filter);
+      if (updateUrl && param && window.history && window.history.replaceState) {
+        var url = new URL(window.location.href);
+        if (filter === "all") url.searchParams.delete(param);
+        else url.searchParams.set(param, filter);
+        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      }
+    };
+    bar.addEventListener("click", function (e) {
+      var chip = e.target.closest("[data-filter]");
+      if (!chip || !bar.contains(chip)) return;
+      choose(chip.getAttribute("data-filter"), true);
     });
     /* posts can arrive after load — keep the chosen topic applied */
     doc.addEventListener("cms:rendered", function () {
       var on = bar.querySelector("[data-filter].is-on");
       if (on) applyFilter(on.getAttribute("data-filter"));
     });
+    if (param) {
+      var requested = new URLSearchParams(window.location.search).get(param);
+      if (requested) choose(requested, false);
+    }
   });
 
   /* YouTube embeds — load the player only when someone presses play ----- */
@@ -246,7 +263,8 @@
       var frame = doc.createElement("iframe");
       frame.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) + "?autoplay=1&rel=0";
       frame.title = box.getAttribute("data-title") || "Video";
-      frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+      frame.allow = "autoplay; accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
       frame.allowFullscreen = true;
       box.appendChild(frame);
       btn.remove();

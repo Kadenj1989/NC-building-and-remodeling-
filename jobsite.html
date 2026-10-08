@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=78">
+  <link rel="stylesheet" href="css/styles.css?v=83">
   <script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
@@ -58,28 +58,31 @@
 
     <!--
       Pages CMS blog. With no posts in content/posts, this "coming soon" block stays.
-      The first published post replaces it.
+      Published posts replace it, and the category buttons filter that list.
     -->
     <section class="section tone-light">
-      <div class="wrap" data-cms-list="resourcesBlog" data-cms-label="Resources blog">
-        <div class="soon-feature reveal">
-          <figure class="soon-media">
-            <img src="img/blog/resources-soon-paint-swatches.jpg" alt="Paint color sample cards, a sample pot and a paintbrush on a wood table" width="1024" height="576" loading="lazy" decoding="async">
-            <span class="soon-badge">Coming soon</span>
-          </figure>
-          <div class="soon-body">
-            <p class="eyebrow">Resources for you</p>
-            <h2>Our blog is coming soon.</h2>
-            <p>Straightforward help for your home, written by the crew that does the work.</p>
-            <ul class="soon-list">
-              <li>Homeowner resources</li>
-              <li>Seasonal tips</li>
-              <li>Project updates</li>
-              <li>Practical home advice</li>
-            </ul>
-            <a class="btn btn-outline" href="projects.html">See Our Projects</a>
+      <div class="wrap">
+        <div class="filters" role="group" aria-label="Filter resources by category" data-filters="blog-list" data-filter-param="cat">
+          <button class="chip is-on" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="chip" type="button" data-filter="jobs" aria-pressed="false">Jobs/Projects</button>
+          <button class="chip" type="button" data-filter="testimonials" aria-pressed="false">Video Testimonials</button>
+          <button class="chip" type="button" data-filter="general" aria-pressed="false">General Information</button>
+        </div>
+        <div id="blog-list" data-cms-list="resourcesBlog" data-cms-label="Resources blog">
+          <div class="soon-feature reveal" data-cat="all">
+            <figure class="soon-media">
+              <img src="img/blog/resources-soon-paint-swatches.jpg" alt="Paint color sample cards, a sample pot and a paintbrush on a wood table" width="1024" height="576" loading="lazy" decoding="async">
+              <span class="soon-badge">Coming soon</span>
+            </figure>
+            <div class="soon-body">
+              <p class="eyebrow">Resources for you</p>
+              <h2>Our blog is coming soon.</h2>
+              <p>Straightforward help for your home, written by the crew that does the work. New posts are filed under Jobs/Projects, Video Testimonials, or General Information.</p>
+              <a class="btn btn-outline" href="projects.html">See Our Projects</a>
+            </div>
           </div>
         </div>
+        <p class="filter-empty" data-filter-empty="blog-list" hidden>No posts in this category yet. Check back soon.</p>
       </div>
     </section>
 
@@ -158,7 +161,7 @@
   <script src="js/config.js?v=13"></script>
   <!-- Owner-managed content: js/content.js holds photos and projects. js/cms.js draws them, and loads blog posts from Pages CMS. -->
   <script src="js/content.js?v=22"></script>
-  <script src="js/cms.js?v=11"></script>
-  <script src="js/site.js?v=41"></script>
+  <script src="js/cms.js?v=15"></script>
+  <script src="js/site.js?v=43"></script>
 </body>
 </html>

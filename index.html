@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=78">
+  <link rel="stylesheet" href="css/styles.css?v=83">
   <link rel="preload" as="image" href="img/hero/hero-framing.jpg">
   <script>document.documentElement.classList.add("js");</script>
   <!-- Business schema: confirmed details only. No street address is published. -->
@@ -349,25 +349,26 @@
       The first published post replaces it.
     -->
     <section class="section tone-gray" id="jobsite">
-      <div class="wrap" data-cms-list="homeBlog" data-cms-label="Homepage blog">
-        <div class="soon-feature reveal">
-          <figure class="soon-media">
-            <img src="img/blog/home-blog-soon-workbench.jpg" alt="Tape measure, carpenter pencil and a plain notebook on a wooden workbench" width="1024" height="576" loading="lazy" decoding="async">
-            <span class="soon-badge">Coming soon</span>
-          </figure>
-          <div class="soon-body">
-            <p class="eyebrow">From the Jobsite · Resources for you</p>
-            <h2>Our blog is coming soon.</h2>
-            <p>Straightforward help for your home, written by the crew that does the work.</p>
-            <ul class="soon-list">
-              <li>Homeowner resources</li>
-              <li>Seasonal tips</li>
-              <li>Project updates</li>
-              <li>Practical home advice</li>
-            </ul>
-            <a class="btn btn-outline" href="projects.html">See Our Projects</a>
+      <div class="wrap">
+        <div data-cms-list="homeBlog" data-cms-label="Homepage blog">
+          <div class="soon-feature reveal">
+            <figure class="soon-media">
+              <img src="img/blog/home-blog-soon-workbench.jpg" alt="Tape measure, carpenter pencil and a plain notebook on a wooden workbench" width="1024" height="576" loading="lazy" decoding="async">
+              <span class="soon-badge">Coming soon</span>
+            </figure>
+            <div class="soon-body">
+              <p class="eyebrow">From the Jobsite · Resources for you</p>
+              <h2>Our blog is coming soon.</h2>
+              <p>Straightforward help for your home, written by the crew that does the work.</p>
+              <a class="btn btn-outline" href="projects.html">See Our Projects</a>
+            </div>
           </div>
         </div>
+        <nav class="filters blog-home-cats" aria-label="Resource categories">
+          <a class="chip" href="jobsite.html?cat=jobs">Jobs/Projects</a>
+          <a class="chip" href="jobsite.html?cat=testimonials">Video Testimonials</a>
+          <a class="chip" href="jobsite.html?cat=general">General Information</a>
+        </nav>
       </div>
     </section>
 
@@ -487,7 +488,7 @@
   <script src="js/config.js?v=13"></script>
   <!-- Owner-managed content: js/content.js holds photos and projects. js/cms.js draws them, and loads blog posts from Pages CMS. -->
   <script src="js/content.js?v=22"></script>
-  <script src="js/cms.js?v=11"></script>
-  <script src="js/site.js?v=41"></script>
+  <script src="js/cms.js?v=15"></script>
+  <script src="js/site.js?v=43"></script>
 </body>
 </html>
